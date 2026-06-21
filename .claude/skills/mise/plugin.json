@@ -1,0 +1,9 @@
+{
+    "name": "mise",
+    "version": "11.93.0",
+    "description": "User-global mise workflow commands: release pipeline delegation, environment status, task discovery across any repo",
+    "author": {
+        "name": "Terry Li",
+        "url": "https://github.com/terrylica"
+    }
+}

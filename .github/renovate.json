@@ -1,0 +1,12 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["local>RocketSurgeonsGuild/.github:renovate-config"],
+    "ignorePaths": ["**/node_modules/**", "**/*.csproj", "Directory.Packages.support.props"],
+    "packageRules": [
+        {
+            "matchCategories": ["js"],
+            "automerge": true,
+            "labels": [":truck: private-dependencies"]
+        }
+    ]
+}

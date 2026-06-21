@@ -1,0 +1,13 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Rocket.Surgery.DependencyInjection;
+using File = ModularPipelines.FileSystem.File;
+
+namespace build.library;
+
+[ServiceRegistration(ServiceLifetime.Singleton)]
+public class SolutionSettings(SharedSettings sharedSettings, IConfiguration configuration)
+{
+    public string Configuration => field ??= configuration.GetValue("Configuration", "Release");
+    public File Solution => field ??= sharedSettings.GetConfigurationFile(nameof(Solution))!;
+}

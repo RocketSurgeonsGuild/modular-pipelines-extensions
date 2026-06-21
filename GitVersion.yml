@@ -1,0 +1,19 @@
+workflow: GitHubFlow/v1
+semantic-version-format: Loose
+
+branches:
+  main:
+    label: beta
+    source-branches:
+      - next
+  pull-request:
+    mode: ContinuousDelivery
+    label: pr
+    source-branches:
+      - main
+      - feature
+  next:
+    mode: ContinuousDelivery
+    regex: ^next$
+    increment: Major
+    label: next

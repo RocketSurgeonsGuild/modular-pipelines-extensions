@@ -1,0 +1,32 @@
+{
+    "coverage-gutters.customizable.status-bar-toggler-watchCoverageAndVisibleEditors-enabled": true,
+    "coverage-gutters.coverageFileNames": ["coverage/coverage.info"],
+    "coverage-gutters.showGutterCoverage": true,
+    "coverage-gutters.showRulerCoverage": true,
+    "languageServerExample.maxNumberOfProblems": 60,
+    "csharp.preview.improvedLaunchExperience": true,
+    "dotnet.automaticallySyncWithActiveItem": true,
+    "dotnet.testWindow.useTestingPlatformProtocol": true,
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#9d0667",
+        "activityBar.background": "#9d0667",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#141f01",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "editorGroup.border": "#9d0667",
+        "panel.border": "#9d0667",
+        "sash.hoverBorder": "#9d0667",
+        "sideBar.border": "#9d0667",
+        "statusBar.background": "#9d0667",
+        "statusBar.debuggingBackground": "#069d3c",
+        "statusBar.debuggingForeground": "#e7e7e7",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#ce0887",
+        "statusBarItem.remoteBackground": "#9d0667",
+        "statusBarItem.remoteForeground": "#e7e7e7",
+        "tab.activeBorder": "#9d0667"
+    },
+    "peacock.color": "#9d0667",
+    "pkl.cli.path": "${env:HOME}/.local/share/mise/shims/pkl"
+}

@@ -1,0 +1,17 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Rocket.Surgery.Conventions.DependencyInjection;
+
+namespace build.library.Conventions;
+
+[ExportConvention]
+internal class ModulePipelinesConvention : IServiceAsyncConvention
+{
+    public ValueTask Register(IConventionContext context, IConfiguration configuration, IServiceCollection services, CancellationToken cancellationToken)
+    {
+        services.AddCommandInterceptors<SolutionInterceptor>();
+        // services.AddCommandInterceptors<LoggingInterceptor>();
+        services.AddCommandInterceptors<RootDirectoryInterceptor>();
+        return ValueTask.CompletedTask;
+    }
+}

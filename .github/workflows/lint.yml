@@ -1,0 +1,59 @@
+name: lint
+
+on:
+    pull_request_target:
+        branches:
+            - master
+            - main
+            - next
+permissions:
+    actions: read
+    checks: read
+    contents: write
+    deployments: read
+    id-token: none
+    issues: write
+    discussions: none
+    packages: none
+    pages: none
+    pull-requests: write
+    repository-projects: none
+    security-events: none
+    statuses: write
+concurrency:
+    group: lint-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+              with:
+                  clean: 'false'
+                  fetch-depth: '0'
+                  ref: ${{ github.event.pull_request.head.ref }}
+                  repository: ${{ github.event.pull_request.head.repo.full_name }}
+                  token: ${{ secrets.RSG_BOT_TOKEN }}
+            - name: Get Head Commit Message
+              id: commit-message
+              run: |
+                  echo "message=$(git show -s --format=%s)" >> "$GITHUB_OUTPUT"
+            - name: 🛠️ Setup mise
+              uses: jdx/mise-action@v2
+              with:
+                  install: true
+                  cache: true
+            - name: 🧹 Lint (hk fix)
+              run: |
+                  hk fix --all
+            - name: Add & Commit
+              env:
+                  GITHUB_TOKEN: ${{ secrets.RSG_BOT_TOKEN }}
+              if: ${{ !contains(steps.commit-message.outputs.message, 'Automatically linting code') }}
+              uses: planetscale/ghcommit-action@v0.2.20
+              with:
+                  commit_message: Automatically linting code
+                  repo: ${{ github.repository }}
+                  branch: ${{ github.event.pull_request.head.ref }}

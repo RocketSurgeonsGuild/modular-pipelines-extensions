@@ -41,10 +41,5 @@ _.path = ["{{config_root}}/.roslyn-lsp/bin"]
 
 [hooks]
 postinstall = [
-  "hk install --mise",
-  "apm install",
-  "skillfile install",
-  "dotnet restore",
-  "mise run roslyn-lsp",
-  "mise run pkl-vscode",
+  "hk install --mise"
 ]

@@ -1,7 +1,7 @@
 using ModularPipelines.Options;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 internal static class MSBuildExtensions
 {

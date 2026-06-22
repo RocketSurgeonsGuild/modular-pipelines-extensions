@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using build.library.Mise;
 using ModularPipelines.FileSystem;
+using Rocket.Surgery.ModularPipelines.Extensions.Mise;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>
 ///     Generates code coverage artifacts from cobertura files emitted by test execution.

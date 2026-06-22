@@ -9,14 +9,16 @@
 #:package Rocket.Surgery.DependencyInjection.Extensions
 #:package Sourcy.Git
 #:package Sourcy.DotNet
+#:package Rocket.Surgery.MyAssembly
 #:project ../src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj
 #:property ImportConventions=true
+#:property JsonSerializerIsReflectionEnabledByDefault=true
 
-using build.library;
 using Build;
 using ModularPipelines;
 using ModularPipelines.Plugins;
 using Rocket.Surgery.Conventions;
+using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 var pipelineBuilder = Pipeline.CreateBuilder(args);
 PluginRegistry.Register(new ConventionsPlugin(ConventionContextBuilder.Create(Imports.Instance)

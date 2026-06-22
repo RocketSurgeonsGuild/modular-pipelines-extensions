@@ -1,7 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using ModularPipelines.Options;
+using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Interception;
 
 public static class CommandInterceptorExtensions
 {
@@ -58,5 +59,3 @@ public static class CommandInterceptorExtensions
             : (options, executionOptions);
     }
 }
-
-

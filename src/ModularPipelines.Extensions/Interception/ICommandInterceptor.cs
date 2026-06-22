@@ -1,6 +1,6 @@
 using ModularPipelines.Options;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public interface ICommandInterceptor
 {

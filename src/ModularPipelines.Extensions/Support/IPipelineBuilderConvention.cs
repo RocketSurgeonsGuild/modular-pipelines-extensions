@@ -1,6 +1,4 @@
-using ModularPipelines;
-
-namespace build.library.Conventions;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Support;
 
 /// <summary>
 ///     IPipelineBuilderConvention

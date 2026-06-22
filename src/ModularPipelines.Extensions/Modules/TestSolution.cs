@@ -1,7 +1,7 @@
-using build.library.Modules;
+using Microsoft.Extensions.Logging;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<RestoreSolution>]
 [DependsOn<BuildSolution>]
@@ -9,22 +9,27 @@ public partial class TestSolution
 (
     ArtifactSettings artifactSettings,
     TestSettings testSettings,
-    SolutionSettings settings = null!) : Module<TestSolution.Result>
+    SolutionSettings settings = null!) : Module<TestSolution.Result?>
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
                                                          .WithSkipWhen(() => SkipDecision.Of(settings is null, "No solution settings available"))
                                                          .Build();
 
-    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
+        if (!testSettings.IsEnabled)
+        {
+            context.Logger.LogInformation("Tests are disabled, skipping test execution");
+            return null;
+        }
         if (!testSettings.RunSettings.Exists)
         {
             await using var tempFile = testSettings.RunSettings.GetStream(FileAccess.Write);
             await typeof(TestSolution)
                  .Assembly
                  // ReSharper disable once NullableWarningSuppressionIsUsed
-                 .GetManifestResourceStream("build.library.default.runsettings")!.CopyToAsync(tempFile, cancellationToken);
+                 .GetManifestResourceStream("Rocket.Surgery.ModularPipelines.Extensions.default.runsettings")!.CopyToAsync(tempFile, cancellationToken);
         }
 
         testSettings.TestsDirectory.Clean();

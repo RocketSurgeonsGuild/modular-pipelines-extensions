@@ -222,3 +222,4 @@ apm_modules/
 
 # Pkl VS Code extension VSIX cache (installed via mise `pkl-vscode` task)
 .pkl-vscode/
+.temp/

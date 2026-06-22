@@ -1,6 +1,6 @@
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<RestoreSolution>]
 [DependsOn<GitVersionModule>]

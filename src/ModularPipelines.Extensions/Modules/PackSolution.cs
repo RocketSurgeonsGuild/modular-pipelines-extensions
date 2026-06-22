@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<BuildSolution>]
 [DependsOn<GitVersionModule>]
@@ -12,7 +12,7 @@ public partial class PackSolution
 {
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget");
+        var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget").EnsureExists();
         var result = await context
                           .DotNet()
                           .Pack(

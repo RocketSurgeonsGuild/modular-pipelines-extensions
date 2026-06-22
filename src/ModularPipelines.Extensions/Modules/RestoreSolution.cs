@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public partial class RestoreSolution
 (

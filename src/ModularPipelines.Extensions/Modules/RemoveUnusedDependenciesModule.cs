@@ -1,8 +1,9 @@
 using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
+using ModularPipelines.Git.Extensions;
 using ModularPipelines.Options;
 
-namespace build.library.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSettings) : Module<RemoveUnusedDependenciesModule.Result>
 {
@@ -21,23 +22,24 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         // Get git-tracked project files
-        var trackedFilesResult = await context.GetService<ICommand>().ExecuteCommandLineTool(
-            new GitLsFilesOptions
-            {
-                Tool = "git",
-                CommandParts = ["ls-files"],
-                RunSettings = ["*.csproj", "*.props", "*.targets"],
-            },
-            new() { LogSettings = CommandLoggingOptions.Silent },
-            cancellationToken
-        );
+        var trackedFilesResult = await context.Git().Commands.LsFiles(new()
+        {
+            RunSettings = ["*.csproj", "*.props", "*.targets", "*.cs"],
+        });
 
-        var projectFiles = trackedFilesResult.StandardOutput
+        var listedFiles = trackedFilesResult.StandardOutput
                                              .Split('\n', StringSplitOptions.RemoveEmptyEntries)
                                              .Select(f => Path.Combine(sharedSettings.RootDirectory.Path, f.Trim()))
                                              .Where(File.Exists)
                                              .ToList();
+        var codePackageReferences = listedFiles.Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(z => File.ReadAllLines(z)
+            .Where(z => z.StartsWith("#:package "))
+            .Select(l => l["#:package ".Length..].Trim())
+        )
+                                  .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
 
+        var projectFiles = listedFiles.Where(f => !f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).ToList();
         // Load all documents and collect all PackageReference names across the whole repo
         var documents = projectFiles
                        .Select(f => (Path: f, Doc: XDocument.Load(f, LoadOptions.PreserveWhitespace)))
@@ -47,6 +49,7 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
                                   .SelectMany(d => d.Doc.Descendants("PackageReference").Concat(d.Doc.Descendants("GlobalPackageReference")))
                                   .Select(e => e.Attribute("Include")?.Value)
                                   .Where(v => v is not null)
+                                  .Concat(codePackageReferences)
                                   .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
 
         var globalPackageReferences = documents

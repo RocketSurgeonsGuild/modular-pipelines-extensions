@@ -1,6 +1,6 @@
-# Indago
+# Modular Pipelines Extensions
 
-Indago is the next-generation library from Rocket Surgeons Guild, focused on modern .NET development. This repository contains only the Indago library and related documentation.
+
 
 # Status
 
@@ -17,7 +17,7 @@ Indago is the next-generation library from Rocket Surgeons Guild, focused on mod
 <!-- nuget packages -->
 | Package | NuGet |
 | ------- | ----- |
-| Indago | [![nuget-version-indago-badge]][nuget-indago] |
+| Modular Pipelines Extensions | [![nuget-version-modular-pipelines-extensions-badge]][nuget-modular-pipelines-extensions] |
 <!-- nuget packages -->
 
 # Whats next?

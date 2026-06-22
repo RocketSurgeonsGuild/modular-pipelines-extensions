@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>
 /// Groups command line file arguments to avoid Windows command-length limits.

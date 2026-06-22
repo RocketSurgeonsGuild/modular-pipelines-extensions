@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/ModularPipelines.Extensions/">
+    <Project Path="src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
+  </Folder>
+</Solution>

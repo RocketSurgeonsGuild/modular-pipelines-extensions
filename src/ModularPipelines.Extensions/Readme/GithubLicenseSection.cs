@@ -1,0 +1,26 @@
+namespace Rocket.Surgery.ModularPipelines.Extensions.Readme;
+
+internal class GithubLicenseSection : IBadgeSection
+{
+    public string Process(
+        IDictionary<object, object?> config,
+        IMarkdownReferences references,
+        IModuleContext context
+    )
+    {
+        var url = references.AddReference(
+            "github-license",
+            $"https://github.com/{config["owner"]}/{config["repository"]}/blob/master/LICENSE"
+        );
+        var badge = references.AddReference(
+            "github-license-badge",
+            $"https://img.shields.io/github/license/{config["owner"]}/{config["repository"]}.svg?style=flat",
+            "License"
+        );
+        return $"[!{badge}]{url}";
+    }
+
+    public string Name => "Github Release";
+
+    public string ConfigKey => "github";
+}

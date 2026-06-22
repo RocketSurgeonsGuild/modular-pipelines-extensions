@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 
-namespace build.library.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<GitVersionModule>]
-public partial class ShipPublicApisModule(SharedSettings sharedSettings, GitVersionModule gitVersionModule) : Module<ShipPublicApisModule.Result>
+public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Module<ShipPublicApisModule.Result>
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
@@ -15,7 +15,12 @@ public partial class ShipPublicApisModule(SharedSettings sharedSettings, GitVers
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        var gitVersion = await gitVersionModule;
+        var gitVersion = await context.GetModule<GitVersionModule>();
+        if (gitVersion.ValueOrDefault?.IsRelease != true)
+        {
+            context.Logger.LogInformation("Prerelease — skipping public API ship");
+            return null;
+        }
 
         var srcDir = sharedSettings.RootDirectory.GetFolder("src");
         var unshippedFiles = srcDir

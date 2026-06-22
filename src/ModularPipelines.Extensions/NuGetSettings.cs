@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.DependencyInjection;
+using Rocket.Surgery.ModularPipelines.Extensions.Readme;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class NuGetSettings(IConfiguration configuration)

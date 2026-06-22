@@ -1,6 +1,7 @@
 using ModularPipelines.Options;
+using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-namespace build.library.Conventions;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
 
 internal class SolutionInterceptor(SolutionSettings? settings = null) :
     ICommandInterceptor<DotNetBuildOptions>,

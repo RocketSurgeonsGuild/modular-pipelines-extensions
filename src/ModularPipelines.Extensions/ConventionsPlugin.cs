@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.DependencyInjection.Compiled;
 using ServiceCollectionExtensions = ModularPipelines.Extensions.ServiceCollectionExtensions;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public class ConventionsPlugin(ConventionContextBuilder contextBuilder) : IModularPipelinesPlugin
 {

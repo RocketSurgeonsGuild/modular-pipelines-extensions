@@ -1,7 +1,7 @@
 using ModularPipelines.FileSystem;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public static class FolderExtensions
 {
@@ -9,5 +9,15 @@ public static class FolderExtensions
     {
         public static Folder operator /(Folder left, string right) => left.GetFolder(right);
         public static File operator +(Folder left, string right) => left.GetFile(right);
+    }
+
+    public static Folder EnsureExists(this Folder folder)
+    {
+        if (!folder.Exists)
+        {
+            folder.Create();
+        }
+
+        return folder;
     }
 }

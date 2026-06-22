@@ -4,7 +4,7 @@ using ModularPipelines.Git;
 using ModularPipelines.Git.Extensions;
 using ModularPipelines.Git.Models;
 
-namespace build.library.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<GitVersionModule.Result>
 {
@@ -30,6 +30,12 @@ public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<Git
 
     public record Result(GitVersionInformation Info)
     {
+        public string? MajorMinorPatch => Info.MajorMinorPatch;
+        public string? FullSemVer => Info.FullSemVer;
+        public string? SemVer => Info.SemVer;
+        public string? PreReleaseTagWithDash => Info.PreReleaseTagWithDash;
+        public bool IsRelease => string.IsNullOrEmpty(Info.PreReleaseTagWithDash);
+
         public IEnumerable<KeyValue> Properties { get; } = typeof(GitVersionInformation)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(p => new KeyValue(p.Name, p.GetValue(Info)?.ToString() ?? ""))

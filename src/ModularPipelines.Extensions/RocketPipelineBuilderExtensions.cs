@@ -1,19 +1,19 @@
-using build.library.Conventions;
-using JetBrains.Annotations;
+using System.ComponentModel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.CommandLine;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
 using Rocket.Surgery.Conventions.Configuration;
+using Rocket.Surgery.ModularPipelines.Extensions.Support;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 [PublicAPI]
-//[EditorBrowsable(EditorBrowsableState.Never)]
+[EditorBrowsable(EditorBrowsableState.Never)]
 public static class RocketPipelineBuilderExtensions
 {
-    //    [EditorBrowsable(EditorBrowsableState.Never)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static async Task<PipelineBuilder> Configure(
         this PipelineBuilder pipelineBuilder,
         ConventionContextBuilder contextBuilder,

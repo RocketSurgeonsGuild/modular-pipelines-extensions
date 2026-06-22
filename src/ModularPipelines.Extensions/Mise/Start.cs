@@ -1,11 +1,10 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModularPipelines.Engine;
 using ModularPipelines.Options;
 
-namespace build.library.Mise;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
 public partial interface IMise
 {

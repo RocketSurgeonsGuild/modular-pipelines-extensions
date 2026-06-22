@@ -1,15 +1,7 @@
 {
-    "name": "indago",
+    "name": "private",
     "version": "1.0.0",
-    "description": "Indago is the next-generation library from Rocket Surgeons Guild, focused on modern .NET development. This repository contains only the Indago library and related documentation.",
-    "homepage": "https://github.com/RocketSurgeonsGuild/Indago#readme",
-    "bugs": {
-        "url": "https://github.com/RocketSurgeonsGuild/Indago/issues"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/RocketSurgeonsGuild/Indago.git"
-    },
+    "description": "",
     "license": "ISC",
     "author": "",
     "type": "commonjs",

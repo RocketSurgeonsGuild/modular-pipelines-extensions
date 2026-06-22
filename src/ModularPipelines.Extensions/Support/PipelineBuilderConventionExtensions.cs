@@ -1,9 +1,9 @@
-using build.library.Conventions;
-using JetBrains.Annotations;
-using ModularPipelines;
-
 // ReSharper disable once CheckNamespace
+using Rocket.Surgery.ModularPipelines.Extensions.Support;
+
+#pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Rocket.Surgery.Conventions;
+#pragma warning restore IDE0130 // Namespace does not match folder structure
 
 /// <summary>
 ///     Helper method for working with <see cref="ConventionContextBuilder" />

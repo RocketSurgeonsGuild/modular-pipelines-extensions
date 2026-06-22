@@ -5,14 +5,17 @@ using ModularPipelines.Git;
 using Rocket.Surgery.DependencyInjection;
 using File = ModularPipelines.FileSystem.File;
 
-namespace build.library;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class SharedSettings(IServiceProvider serviceProvider, IConfiguration configuration)
 {
     public Folder RootDirectory => field ??= GetConfigurationFolder(nameof(RootDirectory)) ?? serviceProvider.GetRequiredService<IGit>().RootDirectory;
 
-    public Folder TempDirectory => field ??= GetConfigurationFolder(nameof(TempDirectory)) ?? RootDirectory / ".temp";
+    public Folder TempDirectory => ( field ??= GetConfigurationFolder(nameof(TempDirectory)) ?? RootDirectory / ".temp" ).EnsureExists();
+
+    public Uri? PackageIconUrl => field ??= configuration.GetValue<Uri?>(nameof(PackageIconUrl), null);
+    public File PackageIconFile => field ??= TempDirectory.GetFile("packageicon.png");
 
     public Folder? GetConfigurationFolder(string key)
     {

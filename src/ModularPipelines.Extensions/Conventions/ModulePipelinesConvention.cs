@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.Conventions.DependencyInjection;
+using Rocket.Surgery.ModularPipelines.Extensions.Interception;
 
-namespace build.library.Conventions;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
 
 [ExportConvention]
 internal class ModulePipelinesConvention : IServiceAsyncConvention

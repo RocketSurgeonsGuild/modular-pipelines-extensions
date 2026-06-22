@@ -1,30 +1,29 @@
 using Microsoft.Extensions.Logging;
+using ModularPipelines.GitHub;
 using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<PackSolution>]
 [DependsOn<GitVersionModule>]
-public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, ArtifactSettings artifactSettings) : Module<CommandResult>
+public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, ArtifactSettings artifactSettings, IGitHub github) : Module<CommandResult>
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(
+                                                         .WithSkipWhen(ctx => SkipDecision.Of(
                                                              !ShouldPublish(),
                                                              "Not a CI release build — skipping NuGet publish"
+                                                         ))
+                                                         .WithSkipWhen(ctx => SkipDecision.Of(
+                                                             string.IsNullOrWhiteSpace(nuGetSettings.NuGetApiKey),
+                                                             "NUGET_API_KEY is not set — skipping NuGet publish"
                                                          ))
                                                          .Build();
 
     protected override async Task<CommandResult?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget");
-
         var apiKey = nuGetSettings.NuGetApiKey;
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            context.Logger.LogWarning("NUGET_API_KEY is not set — skipping publish");
-            return null;
-        }
 
         var packages = nugetFolder.GetFiles(f => f.Extension == "nupkg").ToList();
         var symbols = nugetFolder.GetFiles(f => f.Extension == "snupkg").ToList();
@@ -57,16 +56,13 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         cancellationToken
     );
 
-    private static bool ShouldPublish()
+    private bool ShouldPublish()
     {
-        if (Environment.GetEnvironmentVariable("CI") is null &&
-            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") is null)
+        if (github.EnvironmentVariables.Actions is null)
             return false;
 
         // Only publish for version branches (v*.*) — same guard as Nuke
-        var branch = Environment.GetEnvironmentVariable("GITHUB_REF_NAME")
-                     ?? Environment.GetEnvironmentVariable("GITHUB_HEAD_REF")
-                     ?? "";
+        var branch = github.EnvironmentVariables.RefName ?? github.EnvironmentVariables.HeadRef ?? "";
         return branch.StartsWith("v", StringComparison.OrdinalIgnoreCase) && branch.Contains('.');
     }
 }

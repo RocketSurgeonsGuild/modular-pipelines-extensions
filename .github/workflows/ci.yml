@@ -46,6 +46,9 @@ jobs:
         id: build
         run: |
           mise run build
+        env:
+          NUGET_API_KEY: ${{ secrets.RSG_NUGET_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: 🏺 Publish logs
         if: always()
         uses: actions/upload-artifact@v6

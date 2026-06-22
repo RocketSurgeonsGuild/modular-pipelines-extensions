@@ -25,7 +25,7 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
         var trackedFilesResult = await context.Git().Commands.LsFiles(new()
         {
             RunSettings = ["*.csproj", "*.props", "*.targets", "*.cs"],
-        });
+        }, new() { LogSettings = new CommandLoggingOptions() { ShowStandardOutput = false, ShowStandardError = false } }, cancellationToken);
 
         var listedFiles = trackedFilesResult.StandardOutput
                                              .Split('\n', StringSplitOptions.RemoveEmptyEntries)

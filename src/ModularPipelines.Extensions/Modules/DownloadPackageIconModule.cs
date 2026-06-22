@@ -17,7 +17,7 @@ public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : 
         var url = sharedSettings.PackageIconUrl;
         if (url is null)
         {
-            context.Logger.LogInformation("No package icon url configured, skipping download");
+            NoPackageIconConfigured(context.Logger);
             return null;
         }
 
@@ -25,16 +25,24 @@ public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : 
 
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
 
-        context.Logger.LogInformation("Downloading package icon from {Url} to {Path}", url, destination);
+        LogDownloadingPackageIcon(context.Logger, url, destination);
 
         using var http = new HttpClient();
         var bytes = await http.GetByteArrayAsync(url, cancellationToken);
         await File.WriteAllBytesAsync(destination, bytes, cancellationToken);
 
-        context.Logger.LogInformation("Package icon staged at {Path}", destination);
+        LogPackageIconStaged(context.Logger, destination);
         return new(destination);
     }
 
+    [LoggerMessage(LogLevel.Information, Message = "No package icon url configured, skipping download")]
+    private static partial void NoPackageIconConfigured(ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, Message = "Downloading package icon from {Url} to {Path}")]
+    private static partial void LogDownloadingPackageIcon(ILogger logger, Uri url, string path);
+
+    [LoggerMessage(LogLevel.Information, Message = "Package icon staged at {Path}")]
+    private static partial void LogPackageIconStaged(ILogger logger, string path);
 
     public record Result(string Path);
 }

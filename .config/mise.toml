@@ -37,9 +37,6 @@ HK_MISE = 1
 # `roslyn-lsp` task from the Azure DevOps vs-impl feed. The wrapper lands on PATH below.
 ROSLYN_LSP_VERSION = "4.8.0-7.26274.14"
 PKL_VSCODE_VERSION = "0.22.0"
-_.path = ["{{config_root}}/.roslyn-lsp/bin"]
 
 [hooks]
-postinstall = [
-  "hk install --mise"
-]
+postinstall = ["hk install --mise", "npm install"]

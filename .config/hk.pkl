@@ -63,7 +63,6 @@ local linters = new Mapping<String, Step> {
   ["symlinks"] = Builtins.check_symlinks
   ["hk-test"] = Builtins.hk_test
   ["pkl-format"] = Builtins.pkl_format
-  ["fix-byte-order-marker"] = Builtins.fix_byte_order_marker
   ["prettier"] = Builtins.prettier
   ["prettier-extended"] = (Builtins.prettier) {
     glob = List("*.*proj", "*.props", "*.targets", "*.xml")

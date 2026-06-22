@@ -1,7 +1,7 @@
 using ModularPipelines.Context.Domains.Shell;
 using ModularPipelines.Options;
 
-namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Interception;
 
 public sealed class CommandWrapper(ICommand command, IEnumerable<ICommandInterceptor> interceptors) : ICommand, ICommandContext
 {

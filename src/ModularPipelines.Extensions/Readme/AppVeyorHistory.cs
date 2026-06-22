@@ -1,5 +1,3 @@
-using Rocket.Surgery.ModularPipelines.Extensions.Readme;
-
 namespace Rocket.Surgery.ModularPipelines.Extensions.Readme;
 
 internal class AppVeyorHistory : IHistorySection

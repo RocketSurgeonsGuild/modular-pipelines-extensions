@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.DependencyInjection;
 using File = ModularPipelines.FileSystem.File;
 
-namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class SolutionSettings(SharedSettings sharedSettings, IConfiguration configuration)

@@ -4,7 +4,7 @@ using ModularPipelines.FileSystem;
 using Rocket.Surgery.DependencyInjection;
 using File = ModularPipelines.FileSystem.File;
 
-namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class TestSettings(SharedSettings sharedSettings, ArtifactSettings artifactSettings, IConfiguration configuration)

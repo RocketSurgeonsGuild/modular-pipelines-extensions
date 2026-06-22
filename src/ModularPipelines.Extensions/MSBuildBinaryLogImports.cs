@@ -1,4 +1,4 @@
-namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 /// <summary>
 ///     What files to include in the binary log

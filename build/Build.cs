@@ -18,7 +18,7 @@ using Build;
 using ModularPipelines;
 using ModularPipelines.Plugins;
 using Rocket.Surgery.Conventions;
-using Rocket.Surgery.ModularPipelines.Extensions.Modules;
+using Rocket.Surgery.ModularPipelines.Extensions;
 
 var pipelineBuilder = Pipeline.CreateBuilder(args);
 PluginRegistry.Register(new ConventionsPlugin(ConventionContextBuilder.Create(Imports.Instance)

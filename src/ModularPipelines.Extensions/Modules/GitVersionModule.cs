@@ -1,7 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using ModularPipelines.Git;
-using ModularPipelines.Git.Extensions;
 using ModularPipelines.Git.Models;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;

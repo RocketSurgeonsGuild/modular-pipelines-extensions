@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.DependencyInjection.Compiled;
 using ServiceCollectionExtensions = ModularPipelines.Extensions.ServiceCollectionExtensions;
 
-namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
+namespace Rocket.Surgery.ModularPipelines.Extensions;
 
-public class ConventionsPlugin(ConventionContextBuilder contextBuilder) : IModularPipelinesPlugin
+public delegate bool ModuleDelegate(Type moduleType);
+
+public class ConventionsPlugin(ConventionContextBuilder contextBuilder, ModuleDelegate? moduleDelegate = default) : IModularPipelinesPlugin
 {
     public string Name => "Conventions";
 
@@ -30,6 +32,10 @@ public class ConventionsPlugin(ConventionContextBuilder contextBuilder) : IModul
 
         foreach (var m in modules)
         {
+            if (moduleDelegate?.Invoke(m) == false)
+            {
+                continue;
+            }
             method.MakeGenericMethod(m)!.Invoke(null, [services]);
         }
     }

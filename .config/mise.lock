@@ -19,7 +19,17 @@ checksum = "sha256:8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a
 url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
 provenance = "github-attestations"
 
+[tools.actionlint."platforms.linux-x64-baseline"]
+checksum = "sha256:8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+provenance = "github-attestations"
+
 [tools.actionlint."platforms.linux-x64-musl"]
+checksum = "sha256:8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+provenance = "github-attestations"
+
+[tools.actionlint."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
 url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
 provenance = "github-attestations"
@@ -30,6 +40,11 @@ url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_
 provenance = "github-attestations"
 
 [tools.actionlint."platforms.windows-x64"]
+checksum = "sha256:6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9"
+url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_windows_amd64.zip"
+provenance = "github-attestations"
+
+[tools.actionlint."platforms.windows-x64-baseline"]
 checksum = "sha256:6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9"
 url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_windows_amd64.zip"
 provenance = "github-attestations"
@@ -125,10 +140,6 @@ backend = "dotnet:jetbrains.dottrace.globaltools"
 version = "2025.3.3"
 backend = "dotnet:jetbrains.resharper.globaltools"
 
-[[tools."dotnet:nuke.globaltool"]]
-version = "10.1.0"
-backend = "dotnet:nuke.globaltool"
-
 [[tools."dotnet:verify.tool"]]
 version = "0.7.0"
 backend = "dotnet:verify.tool"
@@ -161,7 +172,15 @@ url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-aarch64-unknown-li
 checksum = "sha256:6b7f9a28391a8b13b88208d723cbde7b945d095cbb03455c7dd5f8df551ed380"
 url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-x86_64-unknown-linux-gnu.tar.gz"
 
+[tools.hk."platforms.linux-x64-baseline"]
+checksum = "sha256:6b7f9a28391a8b13b88208d723cbde7b945d095cbb03455c7dd5f8df551ed380"
+url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
 [tools.hk."platforms.linux-x64-musl"]
+checksum = "sha256:bde5bcaab4035488520ab977f23bfe0b1b639152c6ed7200c9592724e2afe88d"
+url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-x86_64-unknown-linux-musl.tar.gz"
+
+[tools.hk."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:bde5bcaab4035488520ab977f23bfe0b1b639152c6ed7200c9592724e2afe88d"
 url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-x86_64-unknown-linux-musl.tar.gz"
 
@@ -173,33 +192,13 @@ url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-aarch64-apple-darw
 checksum = "sha256:6349ab27cd7a9c07e68edc7c2af0859c8a540482e97a5b7306e9e88460a5ca43"
 url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-x86_64-pc-windows-msvc.zip"
 
-[[tools.node]]
-version = "24.16.0"
-backend = "core:node"
-
-[[tools."npm:@prettier/plugin-xml"]]
-version = "3.4.2"
-backend = "npm:@prettier/plugin-xml"
-
-[[tools."npm:@standard-config/prettier"]]
-version = "1.13.3"
-backend = "npm:@standard-config/prettier"
+[tools.hk."platforms.windows-x64-baseline"]
+checksum = "sha256:6349ab27cd7a9c07e68edc7c2af0859c8a540482e97a5b7306e9e88460a5ca43"
+url = "https://github.com/jdx/hk/releases/download/v1.48.0/hk-x86_64-pc-windows-msvc.zip"
 
 [[tools."npm:prettier"]]
 version = "3.8.4"
 backend = "npm:prettier"
-
-[[tools."npm:prettier-plugin-powershell"]]
-version = "2.1.5"
-backend = "npm:prettier-plugin-powershell"
-
-[[tools."npm:prettier-plugin-toml"]]
-version = "2.0.6"
-backend = "npm:prettier-plugin-toml"
-
-[[tools."npm:prettier-plugin-yaml"]]
-version = "1.2.0"
-backend = "npm:prettier-plugin-yaml"
 
 [[tools."npm:vitepress"]]
 version = "2.0.0-alpha.17"
@@ -221,7 +220,15 @@ url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-aarch64"
 checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
 url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
 
+[tools.pkl."platforms.linux-x64-baseline"]
+checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
+
 [tools.pkl."platforms.linux-x64-musl"]
+checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
+
+[tools.pkl."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
 url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
 
@@ -230,6 +237,10 @@ checksum = "sha256:1b6a5438d9624cd2798a7530721bbbfa27ef72efe5c878a1b6c546c6e7ca0
 url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-macos-aarch64"
 
 [tools.pkl."platforms.windows-x64"]
+checksum = "sha256:a8834481667325b44c539dbb758d7365a16389070f343c04b639bbe525ede013"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-windows-amd64.exe"
+
+[tools.pkl."platforms.windows-x64-baseline"]
 checksum = "sha256:a8834481667325b44c539dbb758d7365a16389070f343c04b639bbe525ede013"
 url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-windows-amd64.exe"
 

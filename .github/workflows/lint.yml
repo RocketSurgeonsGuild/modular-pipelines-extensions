@@ -1,11 +1,11 @@
-name: lint
+name: Lint
 
 on:
     pull_request_target:
         branches:
-            - master
             - main
             - next
+
 permissions:
     actions: read
     checks: write
@@ -48,7 +48,10 @@ jobs:
                   cache: true
             - name: 🧹 Lint (hk fix)
               run: |
-                  hk fix --all
+                  hk fix --from-ref $DEFAULT_BRANCH --to-ref $HEAD
+              env:
+                  DEFAULT_BRANCH: ${{ github.event.pull_request.base.sha }}
+                  HEAD: ${{ github.event.pull_request.head.sha }}
             - name: Add & Commit
               env:
                   GITHUB_TOKEN: ${{ secrets.RSG_BOT_TOKEN }}

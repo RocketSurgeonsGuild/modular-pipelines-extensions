@@ -3,16 +3,15 @@ name: ci
 on:
   push:
     branches:
-      - 'master'
       - 'main'
       - 'next'
     tags:
       - 'v*'
   pull_request:
     branches:
-      - 'master'
       - 'main'
       - 'next'
+
 permissions:
   actions: read
   checks: write
@@ -21,7 +20,7 @@ permissions:
   id-token: none
   issues: write
   discussions: none
-  packages: write
+  packages: none
   pages: none
   pull-requests: write
   repository-projects: none
@@ -46,9 +45,6 @@ jobs:
         id: build
         run: |
           mise run build
-        env:
-          NUGET_API_KEY: ${{ secrets.RSG_NUGET_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: 🏺 Publish logs
         if: always()
         uses: actions/upload-artifact@v6

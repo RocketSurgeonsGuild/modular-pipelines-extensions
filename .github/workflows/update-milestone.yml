@@ -8,9 +8,10 @@ on:
             - opened
             - reopened
             - synchronize
+
 permissions:
     actions: read
-    checks: read
+    checks: write
     contents: read
     deployments: read
     id-token: none

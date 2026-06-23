@@ -1,6 +1,3 @@
 # install  <platform>  <scope>
 install  claude-code  local
 install  copilot  local
-
-# --- Skills ---
-# github  skill  [name]  <owner/repo[@ref]>  <path-or-dir>  [ref]

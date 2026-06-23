@@ -1,12 +1,17 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "hooks": [],
-        "type": "command",
-        "bash": "bash hooks/scripts/track-telemetry.sh",
-        "powershell": "powershell -File hooks/scripts/track-telemetry.ps1"
-      }
-    ]
-  }
+    "hooks": {
+        "PostToolUse": [
+            {
+                "hooks": [],
+                "type": "command",
+                "bash": "bash hooks/scripts/track-telemetry.sh",
+                "powershell": "powershell -File hooks/scripts/track-telemetry.ps1"
+            },
+            {
+                "type": "command",
+                "bash": "bash hooks/scripts/track-telemetry.sh",
+                "powershell": "powershell -File hooks/scripts/track-telemetry.ps1"
+            }
+        ]
+    }
 }

@@ -1,9 +1,9 @@
 {
-  "sdk": {
-    "rollForward": "latestFeature",
-    "allowPrerelease": true
-  },
-  "test": {
-    "runner": "Microsoft.Testing.Platform"
-  }
+    "sdk": {
+        "rollForward": "latestFeature",
+        "allowPrerelease": true
+    },
+    "test": {
+        "runner": "Microsoft.Testing.Platform"
+    }
 }

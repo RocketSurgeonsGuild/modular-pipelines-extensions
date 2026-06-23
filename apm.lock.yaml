@@ -1,7 +1,82 @@
 lockfile_version: '1'
-generated_at: 2026-06-19 04:40:55.709705+00:00
+generated_at: 2026-06-23T00:04:51.091643+00:00
 apm_version: 0.20.0
 dependencies:
+    - repo_url: antfu/skills
+      host: github.com
+      resolved_commit: 50deaeb269d80d92db7a2c5a677290309ae307fc
+      virtual_path: skills/vitepress
+      is_virtual: true
+      package_type: claude_skill
+      deployed_files:
+          - .agents/skills/vitepress
+          - .agents/skills/vitepress/GENERATION.md
+          - .agents/skills/vitepress/SKILL.md
+          - .agents/skills/vitepress/references/advanced-i18n.md
+          - .agents/skills/vitepress/references/advanced-ssr.md
+          - .agents/skills/vitepress/references/core-cli.md
+          - .agents/skills/vitepress/references/core-config.md
+          - .agents/skills/vitepress/references/core-markdown.md
+          - .agents/skills/vitepress/references/core-routing.md
+          - .agents/skills/vitepress/references/features-code-blocks.md
+          - .agents/skills/vitepress/references/features-data-loading.md
+          - .agents/skills/vitepress/references/features-dynamic-routes.md
+          - .agents/skills/vitepress/references/features-vue.md
+          - .agents/skills/vitepress/references/recipes-deploy.md
+          - .agents/skills/vitepress/references/theme-config.md
+          - .agents/skills/vitepress/references/theme-custom.md
+          - .agents/skills/vitepress/references/theme-customization.md
+          - .claude/skills/vitepress
+          - .claude/skills/vitepress/GENERATION.md
+          - .claude/skills/vitepress/SKILL.md
+          - .claude/skills/vitepress/references/advanced-i18n.md
+          - .claude/skills/vitepress/references/advanced-ssr.md
+          - .claude/skills/vitepress/references/core-cli.md
+          - .claude/skills/vitepress/references/core-config.md
+          - .claude/skills/vitepress/references/core-markdown.md
+          - .claude/skills/vitepress/references/core-routing.md
+          - .claude/skills/vitepress/references/features-code-blocks.md
+          - .claude/skills/vitepress/references/features-data-loading.md
+          - .claude/skills/vitepress/references/features-dynamic-routes.md
+          - .claude/skills/vitepress/references/features-vue.md
+          - .claude/skills/vitepress/references/recipes-deploy.md
+          - .claude/skills/vitepress/references/theme-config.md
+          - .claude/skills/vitepress/references/theme-custom.md
+          - .claude/skills/vitepress/references/theme-customization.md
+      deployed_file_hashes:
+          .agents/skills/vitepress/GENERATION.md: sha256:9975841aa0e936aa1206a7de82e8ec7d26fc3185602f5a52b07b8c99199722d6
+          .agents/skills/vitepress/SKILL.md: sha256:eba57687640159cd74333a6d0abcc1c6e7967883b978bc801b9a8fb461021d8c
+          .agents/skills/vitepress/references/advanced-i18n.md: sha256:f02730bf4a60fa84407702e1a498479368d8b29b7547c8250d2619a760d7ddfb
+          .agents/skills/vitepress/references/advanced-ssr.md: sha256:43c09afc3c929c454e9284aea36eab56824c2d42ce5bc7ed1bdb8edbd5c5c188
+          .agents/skills/vitepress/references/core-cli.md: sha256:b86f4d8eb18872173572a6aabf58838cab4e4832cc929cdce3f93c1c42412845
+          .agents/skills/vitepress/references/core-config.md: sha256:85c6a7ee227c47143fdc8e59b5b2e29bfbbf8499c893b7ce6589c2304f469e35
+          .agents/skills/vitepress/references/core-markdown.md: sha256:681277acf237146f0d0b0ffcd088c94e0407982cf01e2ab6ccb0a6ea9af8f136
+          .agents/skills/vitepress/references/core-routing.md: sha256:74c9bf8b8ce351946613cff34b97db6bdc7d88fe442c5423c2efa54e2eaed1a0
+          .agents/skills/vitepress/references/features-code-blocks.md: sha256:ff90e40c8e9494b22745539da477bf9f6255b4da03121bdd5f6a72cb2c61355f
+          .agents/skills/vitepress/references/features-data-loading.md: sha256:92d4364e51dd2647d4738c3869bc7115c1a38277da3eb949fcdec137311f2737
+          .agents/skills/vitepress/references/features-dynamic-routes.md: sha256:eeeb11ddcdac84c91861d713634ddfb93cd3e60375bf66aa65407c3487b613fa
+          .agents/skills/vitepress/references/features-vue.md: sha256:ee803953825a52ca7b7701eb3e6e3b6b3db49d102932c7d60747c5311d9cbb17
+          .agents/skills/vitepress/references/recipes-deploy.md: sha256:7483c7dee28e329b8dbf5a6b6cc67c561d267f3029999ce79e2c7f2b96fa154a
+          .agents/skills/vitepress/references/theme-config.md: sha256:7f32c617ba83793a5648f06064111feb3a223037a077ff43debfbebb4e6def32
+          .agents/skills/vitepress/references/theme-custom.md: sha256:e550a9e5c6db2df707a9187ee0c9710fcd559f0d7e53892bbd1b1c1467305208
+          .agents/skills/vitepress/references/theme-customization.md: sha256:cf39c44fc10d908abc2c660603ccb00e08f5c17b6de49657a0055327a855a381
+          .claude/skills/vitepress/GENERATION.md: sha256:9975841aa0e936aa1206a7de82e8ec7d26fc3185602f5a52b07b8c99199722d6
+          .claude/skills/vitepress/SKILL.md: sha256:eba57687640159cd74333a6d0abcc1c6e7967883b978bc801b9a8fb461021d8c
+          .claude/skills/vitepress/references/advanced-i18n.md: sha256:f02730bf4a60fa84407702e1a498479368d8b29b7547c8250d2619a760d7ddfb
+          .claude/skills/vitepress/references/advanced-ssr.md: sha256:43c09afc3c929c454e9284aea36eab56824c2d42ce5bc7ed1bdb8edbd5c5c188
+          .claude/skills/vitepress/references/core-cli.md: sha256:b86f4d8eb18872173572a6aabf58838cab4e4832cc929cdce3f93c1c42412845
+          .claude/skills/vitepress/references/core-config.md: sha256:85c6a7ee227c47143fdc8e59b5b2e29bfbbf8499c893b7ce6589c2304f469e35
+          .claude/skills/vitepress/references/core-markdown.md: sha256:681277acf237146f0d0b0ffcd088c94e0407982cf01e2ab6ccb0a6ea9af8f136
+          .claude/skills/vitepress/references/core-routing.md: sha256:74c9bf8b8ce351946613cff34b97db6bdc7d88fe442c5423c2efa54e2eaed1a0
+          .claude/skills/vitepress/references/features-code-blocks.md: sha256:ff90e40c8e9494b22745539da477bf9f6255b4da03121bdd5f6a72cb2c61355f
+          .claude/skills/vitepress/references/features-data-loading.md: sha256:92d4364e51dd2647d4738c3869bc7115c1a38277da3eb949fcdec137311f2737
+          .claude/skills/vitepress/references/features-dynamic-routes.md: sha256:eeeb11ddcdac84c91861d713634ddfb93cd3e60375bf66aa65407c3487b613fa
+          .claude/skills/vitepress/references/features-vue.md: sha256:ee803953825a52ca7b7701eb3e6e3b6b3db49d102932c7d60747c5311d9cbb17
+          .claude/skills/vitepress/references/recipes-deploy.md: sha256:7483c7dee28e329b8dbf5a6b6cc67c561d267f3029999ce79e2c7f2b96fa154a
+          .claude/skills/vitepress/references/theme-config.md: sha256:7f32c617ba83793a5648f06064111feb3a223037a077ff43debfbebb4e6def32
+          .claude/skills/vitepress/references/theme-custom.md: sha256:e550a9e5c6db2df707a9187ee0c9710fcd559f0d7e53892bbd1b1c1467305208
+          .claude/skills/vitepress/references/theme-customization.md: sha256:cf39c44fc10d908abc2c660603ccb00e08f5c17b6de49657a0055327a855a381
+      content_hash: sha256:4cb4b38f31b0de634d10fe185af829f418032562d722a53520c926f6e694a7c9
     - repo_url: diegosouzapw/awesome-omni-skills
       host: github.com
       resolved_commit: eb0888e610c027b5ac37daec092e64e83cd802a3

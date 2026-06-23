@@ -1,16 +1,7 @@
 #:package Microsoft.VisualStudio.SolutionPersistence
-#:package ModularPipelines.Analyzers
-#:package ModularPipelines
-#:package ModularPipelines.DotNet
-#:package ModularPipelines.Git
-#:package ModularPipelines.GitHub
-#:package Rocket.Surgery.Conventions
-#:package Rocket.Surgery.Conventions.Configuration.Yaml
-#:package Rocket.Surgery.DependencyInjection.Extensions
 #:package Sourcy.Git
 #:package Sourcy.DotNet
-#:package Rocket.Surgery.MyAssembly
-#:project ../src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj
+#:package Rocket.Surgery.ModularPipelines.Extensions
 #:property ImportConventions=true
 #:property JsonSerializerIsReflectionEnabledByDefault=true
 

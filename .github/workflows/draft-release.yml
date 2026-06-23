@@ -12,9 +12,10 @@ on:
             - '**/*.md'
     schedule:
         - cron: 0 0 * * 4
+
 permissions:
     actions: read
-    checks: read
+    checks: write
     contents: read
     deployments: read
     id-token: none
@@ -26,7 +27,6 @@ permissions:
     repository-projects: none
     security-events: none
     statuses: write
-
 jobs:
     draft_release:
         runs-on: ubuntu-latest

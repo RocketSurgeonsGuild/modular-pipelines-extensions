@@ -6,9 +6,10 @@ on:
             RSG_BOT_TOKEN:
                 required: true
     release:
+
 permissions:
     actions: read
-    checks: read
+    checks: write
     contents: read
     deployments: read
     id-token: none

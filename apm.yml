@@ -18,6 +18,7 @@ dependencies:
         - dotnet/modernize-dotnet/plugins/modernize-dotnet
         - dotnet/skills
         - yvgude/lean-ctx
+        - antfu/skills/skills/vitepress
     mcp:
         - io.github.upstash/context7
         - name: nuget

@@ -7,7 +7,7 @@ on:
             - next
         tags:
             - v*
-    pull_request:
+    pull_request_target:
         branches:
             - main
             - next
@@ -73,7 +73,7 @@ jobs:
                   name: coverage
                   path: artifacts/coverage/
             - name: 🚀 Publish Coverage Comment
-              if: always() && github.event_name == 'pull_request'
+              if: always() && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
               continue-on-error: true
               uses: marocchino/sticky-pull-request-comment@v2
               with:

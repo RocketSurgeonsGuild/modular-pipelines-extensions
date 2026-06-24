@@ -28,11 +28,13 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
         .AddInclude("**/*.props")
         .AddInclude("**/*.targets")
         .AddInclude("**/*.cs");
-        var parser = new GitignoreParser(await sharedSettings.RootDirectory.GetFile(".gitignore").ReadAsync(cancellationToken));
+        var gitIgnoreFile = sharedSettings.RootDirectory.GetFile(".gitignore");
+        var parser = gitIgnoreFile.Exists
+            ? new GitignoreParser(await gitIgnoreFile.ReadAsync(cancellationToken))
+            : new GitignoreParser("");
 
         var listedFiles = sharedSettings.RootDirectory
-        .GetFiles(z => parser.Accepts(z.Path))
-        .Where(z => matcher.Match(z.Path).HasMatches)
+        .GetFiles(z => parser.Accepts(z.Path) && matcher.Match(z.Path).HasMatches)
         .ToImmutableList();
 
         var codePackageReferences = listedFiles.Where(f => f.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))

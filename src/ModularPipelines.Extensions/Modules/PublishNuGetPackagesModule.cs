@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using ModularPipelines.GitHub;
 using File = ModularPipelines.FileSystem.File;
 
@@ -25,8 +24,8 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget");
         var apiKey = nuGetSettings.NuGetApiKey;
 
-        var packages = nugetFolder.GetFiles(f => f.Extension == "nupkg").ToList();
-        var symbols = nugetFolder.GetFiles(f => f.Extension == "snupkg").ToList();
+        var packages = nugetFolder.GetFiles(f => f.Extension is "nupkg" or ".nupkg").ToList();
+        var symbols = nugetFolder.GetFiles(f => f.Extension is "snupkg" or ".snupkg").ToList();
 
         CommandResult? last = null;
         foreach (var package in packages)

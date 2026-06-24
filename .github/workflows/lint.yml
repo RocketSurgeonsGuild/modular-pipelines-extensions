@@ -41,6 +41,7 @@ jobs:
                   ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
                   repository: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name || github.repository }}
                   token: ${{ secrets.RSG_BOT_TOKEN }}
+                  persist-credentials: true
             - name: Get Head Commit Message
               id: commit-message
               run: |
@@ -67,8 +68,10 @@ jobs:
                   HEAD: ${{ github.event.merge_group.head_sha }}
             - name: Add & Commit
               if: github.event_name == 'pull_request_target' && !contains(steps.commit-message.outputs.message, 'Automatically linting code')
-              uses: stefanzweifel/git-auto-commit-action@v7
-              env:
-                  GITHUB_TOKEN: ${{ secrets.RSG_BOT_TOKEN }}
+              uses: planetscale/ghcommit-action@v0.2.20
               with:
                   commit_message: Automatically linting code
+                  repo: ${{ github.repository }}
+                  branch: ${{ github.event.pull_request.head.ref }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

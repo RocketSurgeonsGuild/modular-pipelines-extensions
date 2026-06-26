@@ -1,6 +1,7 @@
 #:package Microsoft.VisualStudio.SolutionPersistence
 #:package Sourcy.Git
 #:package Sourcy.DotNet
+#:package Indago
 #:project ../src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj
 #:property ImportConventions=true
 #:property JsonSerializerIsReflectionEnabledByDefault=true

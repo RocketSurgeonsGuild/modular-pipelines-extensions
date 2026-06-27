@@ -60,6 +60,9 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         if (github.EnvironmentVariables.Actions is null)
             return false;
 
+        if (github.EnvironmentVariables.EventName is "pull_request_target" or "merge_group" or "pull_request")
+            return false;
+
         // Only publish for version branches (v*.*) — same guard as Nuke
         var branch = github.EnvironmentVariables.RefName ?? github.EnvironmentVariables.HeadRef ?? "";
         return branch.StartsWith("v", StringComparison.OrdinalIgnoreCase) && branch.Contains('.');

@@ -1,5 +1,3 @@
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using ModularPipelines.GitHub;
 using File = ModularPipelines.FileSystem.File;
 
@@ -12,8 +10,10 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
                                                          .WithSkipWhen(ctx => SkipDecision.Of(
-                                                             !ShouldPublish(ctx) && string.IsNullOrWhiteSpace(nuGetSettings.NuGetApiKey),
-                                                             "NUGET_API_KEY is not set — skipping NuGet publish"
+                                                             !ShouldPublish(ctx) || string.IsNullOrWhiteSpace(nuGetSettings.NuGetApiKey),
+                                                             string.IsNullOrWhiteSpace(nuGetSettings.NuGetApiKey)
+                                                                 ? "NUGET_API_KEY is not set — skipping NuGet publish"
+                                                                 : "Ref is not a version branch/tag (v*.*) — skipping NuGet publish"
                                                          ))
                                                          .Build();
 

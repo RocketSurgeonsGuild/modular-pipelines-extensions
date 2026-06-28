@@ -12,11 +12,7 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
                                                          .WithSkipWhen(ctx => SkipDecision.Of(
-                                                             !ShouldPublish(ctx),
-                                                             "Not a CI release build — skipping NuGet publish"
-                                                         ))
-                                                         .WithSkipWhen(ctx => SkipDecision.Of(
-                                                             string.IsNullOrWhiteSpace(nuGetSettings.NuGetApiKey),
+                                                             !ShouldPublish(ctx) && string.IsNullOrWhiteSpace(nuGetSettings.NuGetApiKey),
                                                              "NUGET_API_KEY is not set — skipping NuGet publish"
                                                          ))
                                                          .Build();
@@ -28,10 +24,6 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 
         var packages = nugetFolder.GetFiles(f => f.Extension is "nupkg" or ".nupkg").ToList();
         var symbols = nugetFolder.GetFiles(f => f.Extension is "snupkg" or ".snupkg").ToList();
-
-        context.Logger.LogInformation("GitHub event name: {Data}", JsonSerializer.Serialize(github.EnvironmentVariables));
-        return null;
-
 
         CommandResult? last = null;
         foreach (var package in packages)
@@ -69,11 +61,8 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         if (github.EnvironmentVariables.EventName is "pull_request_target" or "merge_group" or "pull_request")
             return false;
 
-        context.Logger.LogInformation("GitHub event name: {Data}", JsonSerializer.Serialize(github.EnvironmentVariables));
-        return true;
-
         // Only publish for version branches (v*.*) — same guard as Nuke
         var branch = github.EnvironmentVariables.RefName ?? github.EnvironmentVariables.HeadRef ?? "";
-        return branch.StartsWith("v", StringComparison.OrdinalIgnoreCase) && branch.Contains('.');
+        return branch.StartsWith("v", comparisonType: StringComparison.OrdinalIgnoreCase) && branch.Contains('.');
     }
 }

@@ -23,6 +23,8 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 
     protected override async Task<CommandResult?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
+        context.Logger.LogInformation("Checking if we should publish NuGet packages for branch {Branch}", JsonSerializer.Serialize(github.EnvironmentVariables));
+
         var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget");
         var apiKey = nuGetSettings.NuGetApiKey;
 

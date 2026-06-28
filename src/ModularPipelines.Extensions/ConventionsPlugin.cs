@@ -1,6 +1,6 @@
 using System.Reflection;
+using Indago.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
-using Rocket.Surgery.DependencyInjection.Compiled;
 using ServiceCollectionExtensions = ModularPipelines.Extensions.ServiceCollectionExtensions;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
@@ -15,8 +15,8 @@ public class ConventionsPlugin(ConventionContextBuilder contextBuilder, ModuleDe
 
     public void ConfigureServices(IServiceCollection services)
     {
-        var ctp = Assembly.GetEntryAssembly().GetCompiledTypeProvider();
-        services.AddCompiledServiceRegistrations(ctp);
+        var ctp = Assembly.GetEntryAssembly().GetIndagoProvider();
+        services.AddIndagoServiceRegistrations(ctp);
         // not sure if this is going to come back to haunt me or not
         var modules = ctp.GetTypes(f => f
                                        .FromAssemblies()

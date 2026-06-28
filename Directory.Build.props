@@ -41,6 +41,7 @@
             Visible="false"
         />
         <None Include="$(MSBuildThisFileDirectory)/LICENSE" Pack="true" PackagePath="/" Visible="false" />
+        <None Include="$(MSBuildThisFileDirectory)/Readme.md" Pack="true" PackagePath="/" Visible="false" />
     </ItemGroup>
     <ItemGroup>
         <ProjectCapability Include="DynamicDependentFile" />

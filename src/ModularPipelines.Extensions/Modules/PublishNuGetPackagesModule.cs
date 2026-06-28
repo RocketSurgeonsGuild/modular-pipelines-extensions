@@ -10,7 +10,7 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
                                                          .WithSkipWhen(ctx => SkipDecision.Of(
-                                                             !ShouldPublish(),
+                                                             !ShouldPublish(ctx),
                                                              "Not a CI release build — skipping NuGet publish"
                                                          ))
                                                          .WithSkipWhen(ctx => SkipDecision.Of(
@@ -55,9 +55,12 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         cancellationToken
     );
 
-    private bool ShouldPublish()
+    private bool ShouldPublish(IModuleContext context)
     {
         if (github.EnvironmentVariables.Actions is null)
+            return false;
+
+        if (github.EnvironmentVariables.EventName is "pull_request_target" or "merge_group" or "pull_request")
             return false;
 
         // Only publish for version branches (v*.*) — same guard as Nuke

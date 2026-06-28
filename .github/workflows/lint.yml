@@ -34,20 +34,19 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   clean: 'false'
                   fetch-depth: '0'
                   ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
                   repository: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name || github.repository }}
                   token: ${{ secrets.RSG_BOT_TOKEN }}
-                  persist-credentials: true
             - name: Get Head Commit Message
               id: commit-message
               run: |
                   echo "message=$(git show -s --format=%s)" >> "$GITHUB_OUTPUT"
             - name: 🛠️ Setup mise
-              uses: jdx/mise-action@v2
+              uses: jdx/mise-action@v4
               with:
                   install: true
                   cache: true
@@ -68,10 +67,8 @@ jobs:
                   HEAD: ${{ github.event.merge_group.head_sha }}
             - name: Add & Commit
               if: github.event_name == 'pull_request_target' && !contains(steps.commit-message.outputs.message, 'Automatically linting code')
-              uses: planetscale/ghcommit-action@v0.2.20
+              uses: stefanzweifel/git-auto-commit-action@v7
+              env:
+                  GITHUB_TOKEN: ${{ secrets.RSG_BOT_TOKEN }}
               with:
                   commit_message: Automatically linting code
-                  repo: ${{ github.repository }}
-                  branch: ${{ github.event.pull_request.head.ref }}
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

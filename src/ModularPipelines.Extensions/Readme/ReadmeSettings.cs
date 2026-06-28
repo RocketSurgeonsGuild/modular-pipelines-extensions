@@ -1,6 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Rocket.Surgery.DependencyInjection;
-using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Readme;

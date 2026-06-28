@@ -1,5 +1,3 @@
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using ModularPipelines.GitHub;
 using File = ModularPipelines.FileSystem.File;
 
@@ -11,7 +9,6 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
-                                                         .WithSkipWhen(() => true)
                                                          .WithSkipWhen(ctx => SkipDecision.Of(
                                                              !ShouldPublish(ctx),
                                                              "Not a CI release build — skipping NuGet publish"
@@ -24,8 +21,6 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 
     protected override async Task<CommandResult?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        context.Logger.LogInformation("Checking if we should publish NuGet packages for branch {Branch}", JsonSerializer.Serialize(github.EnvironmentVariables));
-
         var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget");
         var apiKey = nuGetSettings.NuGetApiKey;
 
@@ -62,9 +57,6 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 
     private bool ShouldPublish(IModuleContext context)
     {
-        context.Logger.LogInformation("Checking if we should publish NuGet packages for branch {Branch}", JsonSerializer.Serialize(github.EnvironmentVariables));
-
-
         if (github.EnvironmentVariables.Actions is null)
             return false;
 

@@ -70,7 +70,7 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
             return false;
 
         context.Logger.LogInformation("GitHub event name: {Data}", JsonSerializer.Serialize(github.EnvironmentVariables));
-        return false;
+        return true;
 
         // Only publish for version branches (v*.*) — same guard as Nuke
         var branch = github.EnvironmentVariables.RefName ?? github.EnvironmentVariables.HeadRef ?? "";

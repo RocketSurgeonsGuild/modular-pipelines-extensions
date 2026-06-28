@@ -29,6 +29,10 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         var packages = nugetFolder.GetFiles(f => f.Extension is "nupkg" or ".nupkg").ToList();
         var symbols = nugetFolder.GetFiles(f => f.Extension is "snupkg" or ".snupkg").ToList();
 
+        context.Logger.LogInformation("GitHub event name: {Data}", JsonSerializer.Serialize(github.EnvironmentVariables));
+        return null;
+
+
         CommandResult? last = null;
         foreach (var package in packages)
             last = await PushAsync(context, package, "https://api.nuget.org/v3/index.json", apiKey, cancellationToken);

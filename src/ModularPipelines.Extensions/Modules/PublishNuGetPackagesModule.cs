@@ -11,6 +11,7 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
+                                                         .WithSkipWhen(() => true)
                                                          .WithSkipWhen(ctx => SkipDecision.Of(
                                                              !ShouldPublish(ctx),
                                                              "Not a CI release build — skipping NuGet publish"

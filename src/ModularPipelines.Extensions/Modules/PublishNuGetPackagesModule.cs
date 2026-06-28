@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using ModularPipelines.GitHub;
 using File = ModularPipelines.FileSystem.File;
 
@@ -62,6 +64,9 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
 
         if (github.EnvironmentVariables.EventName is "pull_request_target" or "merge_group" or "pull_request")
             return false;
+
+        context.Logger.LogInformation("GitHub event name: {Data}", JsonSerializer.Serialize(github.EnvironmentVariables));
+        return false;
 
         // Only publish for version branches (v*.*) — same guard as Nuke
         var branch = github.EnvironmentVariables.RefName ?? github.EnvironmentVariables.HeadRef ?? "";

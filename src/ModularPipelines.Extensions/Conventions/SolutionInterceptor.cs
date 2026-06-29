@@ -1,6 +1,5 @@
 using ModularPipelines.Options;
 using Rocket.Surgery.ModularPipelines.Extensions.Interception;
-using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
 

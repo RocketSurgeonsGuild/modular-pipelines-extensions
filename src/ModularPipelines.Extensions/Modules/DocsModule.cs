@@ -8,7 +8,7 @@ public class DocsModule(DocsSettings settings, ArtifactSettings artifactSettings
 
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(!settings.DocsDirectory.Exists, "Docs directory does not exist, skipping docs build"))
+                                                         .WithSkipWhen(() => SkipDecision.Of(!settings.DocsEnabled || !settings.DocsDirectory.Exists, "Docs directory does not exist, skipping docs build"))
                                                          .Build();
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)

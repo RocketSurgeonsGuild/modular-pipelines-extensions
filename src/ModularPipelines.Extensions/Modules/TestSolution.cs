@@ -1,4 +1,7 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ModularPipelines.FileSystem;
 using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -8,7 +11,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 public partial class TestSolution
 (
     ArtifactSettings artifactSettings,
-    TestSettings testSettings,
+    TestSolution.Settings testSettings,
     SolutionSettings settings = null!) : Module<TestSolution.Result?>
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
@@ -67,4 +70,13 @@ public partial class TestSolution
     }
 
     public record Result(CommandResult CommandResult, File Trx, File Binlog);
+
+    [ServiceRegistration(ServiceLifetime.Singleton)]
+    public class Settings(SharedSettings sharedSettings, ArtifactSettings artifactSettings, IConfiguration configuration)
+    {
+        public bool IsEnabled => configuration.GetValue<bool?>("EnableTests") ?? true;
+        public Folder TestsDirectory => field ??= ( sharedSettings.GetConfigurationFolder(nameof(TestsDirectory)) ?? artifactSettings.LogsDirectory / "tests" ).EnsureExists();
+        public Folder CoverageDirectory => field ??= ( sharedSettings.GetConfigurationFolder(nameof(CoverageDirectory)) ?? artifactSettings.LogsDirectory / "coverage" ).EnsureExists();
+        public File RunSettings => field ??= sharedSettings.GetConfigurationFile(nameof(RunSettings)) ?? ( TestsDirectory + "coverage.runsettings" )!;
+    }
 }

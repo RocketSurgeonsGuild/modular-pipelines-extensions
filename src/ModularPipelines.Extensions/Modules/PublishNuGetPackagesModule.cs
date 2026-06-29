@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using ModularPipelines.GitHub;
 using File = ModularPipelines.FileSystem.File;
 
@@ -5,7 +7,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<PackSolution>]
 [DependsOn<GitVersionModule>]
-public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, ArtifactSettings artifactSettings, IGitHub github) : Module<CommandResult>
+public partial class PublishNuGetPackagesModule(PublishNuGetPackagesModule.Settings nuGetSettings, ArtifactSettings artifactSettings, IGitHub github) : Module<CommandResult>
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
@@ -64,5 +66,14 @@ public partial class PublishNuGetPackagesModule(NuGetSettings nuGetSettings, Art
         // Only publish for version branches (v*.*) — same guard as Nuke
         var branch = github.EnvironmentVariables.RefName ?? github.EnvironmentVariables.HeadRef ?? "";
         return branch.StartsWith("v", comparisonType: StringComparison.OrdinalIgnoreCase) && branch.Contains('.');
+    }
+
+    [ServiceRegistration(ServiceLifetime.Singleton)]
+    public class Settings(IConfiguration configuration)
+    {
+        public string? NuGetApiKey => configuration.GetValue<string?>("RSG_NUGET_API_KEY")
+                                      ?? configuration.GetValue<string?>("NUGET_API_KEY")
+                                      ?? Environment.GetEnvironmentVariable("RSG_NUGET_API_KEY")
+                                      ?? Environment.GetEnvironmentVariable("NUGET_API_KEY");
     }
 }

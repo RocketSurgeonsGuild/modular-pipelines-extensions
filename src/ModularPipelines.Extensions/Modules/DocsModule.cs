@@ -8,14 +8,14 @@ public class DocsModule(DocsSettings settings, ArtifactSettings artifactSettings
 
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
-                                                         .WithSkipWhen(ctx => settings.DocsDirectory.Exists)
+                                                         .WithSkipWhen(() => SkipDecision.Of(!settings.DocsEnabled || !settings.DocsDirectory.Exists, "Docs directory does not exist, skipping docs build"))
                                                          .Build();
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
 
-        var result = await context.Mise().Execute(
-            [settings.DocsBuildTask],
+        var result = await context.Mise().Run(
+            settings.DocsBuildTask,
             new() { WorkingDirectory = settings.DocsDirectory },
             cancellationToken
         );

@@ -28,7 +28,7 @@
         <PackageVersion Include="Humanizer.Core" Version="3.0.1" />
         <PackageVersion Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
         <PackageVersion Include="ModularPipelines.Node" Version="3.1.90" />
-        <PackageVersion Include="MSBuild.StructuredLogger" Version="2.3.113" />
+        <PackageVersion Include="MSBuild.StructuredLogger" Version="2.3.204" />
         <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
         <PackageVersion Include="Indago" Version="0.0.2" />
         <PackageVersion Include="ModularPipelines.Analyzers" Version="2.48.30" />

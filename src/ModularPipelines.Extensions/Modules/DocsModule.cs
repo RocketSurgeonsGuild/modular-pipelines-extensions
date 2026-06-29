@@ -14,8 +14,8 @@ public class DocsModule(DocsSettings settings, ArtifactSettings artifactSettings
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
 
-        var result = await context.Mise().Execute(
-            [settings.DocsBuildTask],
+        var result = await context.Mise().Run(
+            settings.DocsBuildTask,
             new() { WorkingDirectory = settings.DocsDirectory },
             cancellationToken
         );

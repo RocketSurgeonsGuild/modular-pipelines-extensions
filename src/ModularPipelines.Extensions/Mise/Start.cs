@@ -14,10 +14,12 @@ public partial interface IMise
         CancellationToken cancellationToken = default
     );
 
-    // Task<CommandResult> Run(
-    //     MiseRunOptions options,
-    //     CommandExecutionOptions? executionOptions = null,
-    //     CancellationToken cancellationToken = default);
+    Task<CommandResult> Run(string task, Span<string> arguments,
+        CommandExecutionOptions? executionOptions = null,
+        CancellationToken cancellationToken = default);
+    Task<CommandResult> Run(string task,
+        CommandExecutionOptions? executionOptions = null,
+        CancellationToken cancellationToken = default);
 }
 
 internal partial class Mise(ICommand command) : IMise
@@ -30,6 +32,35 @@ internal partial class Mise(ICommand command) : IMise
                 Tool = "mise",
                 CommandParts = ["exec"],
                 RunSettings = [.. arguments],
+            },
+            executionOptions,
+            cancellationToken
+        );
+    }
+
+    public Task<CommandResult> Run(string task, Span<string> arguments, CommandExecutionOptions? executionOptions = null, CancellationToken cancellationToken = default)
+    {
+        return command.ExecuteCommandLineTool(
+            new MiseOptions
+            {
+                Tool = "mise",
+                CommandParts = ["run"],
+                Arguments = [task],
+                RunSettings = [.. arguments],
+            },
+            executionOptions,
+            cancellationToken
+        );
+    }
+
+    public Task<CommandResult> Run(string task, CommandExecutionOptions? executionOptions = null, CancellationToken cancellationToken = default)
+    {
+        return command.ExecuteCommandLineTool(
+            new MiseOptions
+            {
+                Tool = "mise",
+                CommandParts = ["run"],
+                Arguments = [task],
             },
             executionOptions,
             cancellationToken

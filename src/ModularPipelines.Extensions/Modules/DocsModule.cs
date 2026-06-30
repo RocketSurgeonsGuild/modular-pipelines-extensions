@@ -1,10 +1,13 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using ModularPipelines.FileSystem;
 using Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-public class DocsModule(DocsSettings settings, ArtifactSettings artifactSettings) : Module<DocsModule.Result>
+[DependsOn<BuildSolution>(Optional = true)]
+public class DocsModule(DocsModule.Settings settings, ArtifactSettings artifactSettings) : Module<DocsModule.Result>
 {
-    public record Result(string OutputPath);
 
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
@@ -23,5 +26,16 @@ public class DocsModule(DocsSettings settings, ArtifactSettings artifactSettings
         await settings.DocsOutputDirectory.CopyToAsync(artifactSettings.ArtifactsDirectory / "docs", cancellationToken: cancellationToken);
 
         return result.ExitCode == 0 ? new Result(artifactSettings.ArtifactsDirectory / "docs") : null;
+    }
+
+
+    public record Result(string OutputPath);
+    [ServiceRegistration(ServiceLifetime.Singleton)]
+    public class Settings(SharedSettings sharedSettings, IConfiguration configuration)
+    {
+        public bool DocsEnabled { get; } = configuration.GetValue("Docs:Enabled", true);
+        public Folder DocsDirectory => field ??= configuration.GetValue<Folder?>("Docs:Directory") ?? sharedSettings.RootDirectory / "docs";
+        public string DocsBuildTask => field ??= configuration.GetValue<string>("Docs:Task") ?? "docs:build";
+        public Folder DocsOutputDirectory => field ??= configuration.GetValue<Folder?>("Docs:Output") ?? DocsDirectory / "dist";
     }
 }

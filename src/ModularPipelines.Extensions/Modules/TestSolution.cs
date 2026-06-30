@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using File = ModularPipelines.FileSystem.File;
 
@@ -9,7 +8,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 public partial class TestSolution
 (
     ArtifactSettings artifactSettings,
-    TestSolution.Settings testSettings,
+    TestSettings testSettings,
     SolutionSettings settings = null!) : Module<TestSolution.Result?>
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration

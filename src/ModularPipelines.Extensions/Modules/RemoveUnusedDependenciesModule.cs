@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
 using GitignoreParserNet;
-using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
 using ModularPipelines.Options;
 
@@ -23,18 +22,18 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        var matcher = new Matcher()
+        var matcher = await sharedSettings.GetMatcher(m => m
         .AddInclude("**/*.csproj")
         .AddInclude("**/*.props")
         .AddInclude("**/*.targets")
-        .AddInclude("**/*.cs");
+        .AddInclude("**/*.cs"), cancellationToken);
         var gitIgnoreFile = sharedSettings.RootDirectory.GetFile(".gitignore");
         var parser = gitIgnoreFile.Exists
             ? new GitignoreParser(await gitIgnoreFile.ReadAsync(cancellationToken))
             : new GitignoreParser("");
 
         var listedFiles = sharedSettings.RootDirectory
-        .GetFiles(z => parser.Accepts(z.Path) && matcher.Match(z.Path).HasMatches)
+        .GetFiles(f => matcher(f.Path))
         .ToImmutableList();
 
         var codePackageReferences = listedFiles.Where(f => f.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))

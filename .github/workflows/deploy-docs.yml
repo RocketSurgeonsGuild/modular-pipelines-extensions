@@ -6,7 +6,7 @@ on:
             - main
         paths:
             - docs/**
-            - src/Indago/**
+            - src/**
             - .github/workflows/deploy-docs.yml
     workflow_dispatch:
 

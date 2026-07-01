@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -13,16 +12,11 @@ public partial class TestSolution
 {
     protected override ModuleConfiguration Configure() => ModuleConfiguration
                                                          .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(settings is null, "No solution settings available"))
+                                                         .WithSkipWhen(() => SkipDecision.Of(settings is null || !testSettings.IsEnabled, "Tests are disabled or no solution was provided"))
                                                          .Build();
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        if (!testSettings.IsEnabled)
-        {
-            context.Logger.LogInformation("Tests are disabled, skipping test execution");
-            return null;
-        }
         if (!testSettings.RunSettings.Exists)
         {
             await using var tempFile = testSettings.RunSettings.GetStream(FileAccess.Write);

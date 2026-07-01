@@ -7,6 +7,7 @@
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <PackageIcon>images/packageicon.png</PackageIcon>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <!--
             in package
             Title

@@ -17,7 +17,3 @@ branches:
         regex: ^next$
         increment: Major
         label: next
-
-    unknown:
-        prevent-increment:
-            when-current-commit-tagged: true

@@ -22,8 +22,6 @@ public partial class PackSolution
                                    Configuration = settings.Configuration,
                                    NoRestore = true,
                                    NoBuild = true,
-                                   IncludeSource = true,
-                                   IncludeSymbols = true,
                                    Output = nugetFolder,
                                    Properties = ( await context.GetModule<GitVersionModule>() ).ValueOrDefault?.Properties,
                                },

@@ -17,7 +17,7 @@
     },
     "devDependencies": {
         "@prettier/plugin-xml": "3.4.2",
-        "@standard-config/prettier": "1.21.1",
+        "@standard-config/prettier": "1.22.0",
         "prettier": "3.9.8",
         "prettier-plugin-powershell": "2.2.0",
         "prettier-plugin-toml": "3.0.2",

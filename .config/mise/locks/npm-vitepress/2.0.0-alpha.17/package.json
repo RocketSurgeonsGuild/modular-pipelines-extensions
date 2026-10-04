@@ -1,0 +1,7 @@
+{
+  "name": "mise-npm-install",
+  "private": true,
+  "dependencies": {
+    "vitepress": "2.0.0-alpha.17"
+  }
+}

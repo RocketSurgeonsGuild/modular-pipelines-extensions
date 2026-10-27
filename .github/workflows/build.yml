@@ -29,10 +29,19 @@ jobs:
                   clean: 'false'
                   fetch-depth: '0'
             - name: 🛠️ Setup mise
-              uses: jdx/mise-action@v4
+              uses: jdx/mise-action@v5
+              env:
+                  # One install at a time: mise downloads dotnet-install.sh to one shared path for every dotnet version, so the
+                  # SDK and runtime installs overwrite it under each other ("failed to execute command") when they run in parallel.
+                  MISE_JOBS: '1'
               with:
                   install: true
                   cache: true
+                  # Save in the post step: `mise run build` fills the npm cache (npm_config_cache lives in the mise data dir) after
+                  # `mise install`, and mise-action otherwise saves right after install, leaving the npm cache out.
+                  cache_save_post: true
+                  cache_key_prefix: mise-v2
+                  experimental: true
                   github_token: ${{ secrets.GITHUB_TOKEN }}
             - name: ⚙️ Build
               id: build

@@ -1,0 +1,5 @@
+# Adapted from microsoft/aspire.dev and kept close to upstream. Its switches fall through to a default on purpose;
+# `dotnet format` would otherwise "populate" them with throwing arms (RefKind.None => throw ...) that break every run.
+[*.cs]
+dotnet_diagnostic.IDE0010.severity = none
+dotnet_diagnostic.IDE0072.severity = none

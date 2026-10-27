@@ -44,15 +44,6 @@ internal sealed class CanonicalType
                 Microsoft.CodeAnalysis.TypeKind.Interface => "interface",
                 Microsoft.CodeAnalysis.TypeKind.Enum => "enum",
                 Microsoft.CodeAnalysis.TypeKind.Delegate => "delegate",
-                Microsoft.CodeAnalysis.TypeKind.Unknown => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.Array => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.Dynamic => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.Error => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.Module => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.Pointer => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.TypeParameter => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.Submission => throw new NotImplementedException(),
-                Microsoft.CodeAnalysis.TypeKind.FunctionPointer => throw new NotImplementedException(),
                 _ => "class",
             };
     }

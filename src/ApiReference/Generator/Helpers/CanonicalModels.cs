@@ -34,8 +34,8 @@ internal sealed class CanonicalType
 
     internal static string GetTypeKind(Microsoft.CodeAnalysis.INamedTypeSymbol symbol)
     {
-        return  symbol.IsRecord 
-            ?  symbol.IsValueType ? "record struct" : "record" 
+        return symbol.IsRecord
+            ? symbol.IsValueType ? "record struct" : "record"
             : symbol.TypeKind switch
             {
                 Microsoft.CodeAnalysis.TypeKind.Class => "class",

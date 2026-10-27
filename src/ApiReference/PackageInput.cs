@@ -52,11 +52,11 @@ internal sealed record PackageInput(string PackageId, string Version, string Tar
                     )
                    .ConfigureAwait(false);
         var assemblyPath = inner.Property("TargetPath");
-        return  !File.Exists(assemblyPath) 
+        return !File.Exists(assemblyPath)
             ? throw new InvalidOperationException(
                 $"{inner.Property("ProjectName")} ({framework}) isn't built: {assemblyPath} doesn't exist. Build the solution ({options.Configuration}) first."
             )
-            :   new(
+            : new(
             outer.Property("PackageId"),
             // The version the build stamped (GitVersion's, in CI) rather than the evaluated default.
             FileVersionInfo.GetVersionInfo(assemblyPath).ProductVersion?.Split('+')[0] ?? "0.0.0",

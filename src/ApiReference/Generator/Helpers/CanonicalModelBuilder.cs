@@ -562,7 +562,7 @@ internal sealed class CanonicalModelBuilder(Compilation compilation)
 
     private CanonicalDocumentation? TryResolveInheritDoc(ISymbol symbol, string? cref, int inheritDepth)
     {
-        var baseSymbol =  cref is not null  ?  ResolveCrefSymbol(symbol, cref)  :  FindInheritDocSource(symbol) ;
+        var baseSymbol = cref is not null ? ResolveCrefSymbol(symbol, cref) : FindInheritDocSource(symbol);
         if (baseSymbol is null)
         {
             return null;
@@ -1298,14 +1298,14 @@ internal sealed class CanonicalModelBuilder(Compilation compilation)
 
     private static string FormatTypedConstant(TypedConstant constant)
     {
-        return  constant.Kind == TypedConstantKind.Array
-            ?  string.Join(", ", constant.Values.SelectMany(FlattenTypedConstant))
-            :  constant.Value switch
-        {
-            ITypeSymbol typeSymbol => typeSymbol.ToDisplayString(),
-            null => "null",
-            _ => constant.Value.ToString() ?? "",
-        };
+        return constant.Kind == TypedConstantKind.Array
+            ? string.Join(", ", constant.Values.SelectMany(FlattenTypedConstant))
+            : constant.Value switch
+            {
+                ITypeSymbol typeSymbol => typeSymbol.ToDisplayString(),
+                null => "null",
+                _ => constant.Value.ToString() ?? "",
+            };
     }
 
     /// <summary>

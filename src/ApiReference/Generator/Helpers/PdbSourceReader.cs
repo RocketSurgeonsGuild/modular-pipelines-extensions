@@ -486,7 +486,7 @@ internal sealed class PdbSourceReader : IDisposable
         }
 
         // 3. Multiple methods or ambiguous match → return file only (no line range)
-        return  file is not null  ?  new MethodSourceInfo(file, 0, 0)  :   null;
+        return file is not null ? new MethodSourceInfo(file, 0, 0) : null;
     }
 
     /// <summary>
@@ -519,10 +519,10 @@ internal sealed class PdbSourceReader : IDisposable
     private string CleanPath(string path)
     {
         path = path.Replace('\\', '/');
-        if (path.StartsWith("/_/"))
-            return path[3..];
-        return  _sourceRoot is not null && path.StartsWith(_sourceRoot, StringComparison.OrdinalIgnoreCase) 
-            ?  path[_sourceRoot.Length..] 
+        return  path.StartsWith("/_/") 
+            ?  path[3..] 
+            :  _sourceRoot is not null && path.StartsWith(_sourceRoot, StringComparison.OrdinalIgnoreCase)
+            ? path[_sourceRoot.Length..]
             : path;
     }
 

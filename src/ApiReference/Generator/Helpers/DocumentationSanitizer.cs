@@ -49,9 +49,9 @@ public static class DocumentationSanitizer
     /// <returns>The text with connection-string password values redacted.</returns>
     public static string? RedactConnectionStringPasswords(string? text)
     {
-        return  string.IsNullOrEmpty(text) || !text.Contains('=') 
+        return string.IsNullOrEmpty(text) || !text.Contains('=')
             ? text
-            :  ConnectionStringPasswordRegex.Replace(
+            : ConnectionStringPasswordRegex.Replace(
             text,
             static match =>
             {

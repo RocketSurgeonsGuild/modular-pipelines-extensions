@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/ApiReference/">
+    <Project Path="src/ApiReference/Rocket.Surgery.ApiReference.csproj" />
+  </Folder>
   <Folder Name="/src/ModularPipelines.Extensions/">
     <Project Path="src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
   </Folder>

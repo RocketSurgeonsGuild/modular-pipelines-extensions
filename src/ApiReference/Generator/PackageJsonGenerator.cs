@@ -1,0 +1,603 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// Adapted from microsoft/aspire.dev src/tools/PackageJsonGenerator (see UPSTREAM-README.md).
+
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
+using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using PackageJsonGenerator.Helpers;
+
+namespace PackageJsonGenerator;
+
+public static class PackageJsonGenerator
+{
+    private const string NewAspireRepositoryUrl = "https://github.com/microsoft/aspire";
+
+    public static bool GeneratePackageJson(string? inputAssembly, string[]? references, string? outputFile, string? versionOverride = null, string? packageNameOverride = null, string? sourceRepoOverride = null, string? sourceCommitOverride = null, string? targetFrameworkOverride = null, ConcurrentDictionary<string, PortableExecutableReference>? referenceCache = null, string? sourceRoot = null)
+    {
+        if (string.IsNullOrEmpty(inputAssembly))
+        {
+            throw new ArgumentException("Input assembly path is required.", nameof(inputAssembly));
+        }
+
+        if (references is null || references.Length is 0)
+        {
+            throw new ArgumentException("At least one reference assembly is required.", nameof(references));
+        }
+
+        if (string.IsNullOrEmpty(outputFile))
+        {
+            throw new ArgumentException("Output file path is required.", nameof(outputFile));
+        }
+
+        var inputReference = CreateMetadataReference(inputAssembly);
+        var resolvedRefs = referenceCache is not null
+            ? references.Select(r => referenceCache.GetOrAdd(r, CreateMetadataReference))
+            : references.Select(CreateMetadataReference);
+        var compilation = CSharpCompilation.Create(
+            "PackageJsonGen",
+            references: resolvedRefs.Concat([inputReference]));
+
+        var assemblySymbol = (IAssemblySymbol)compilation.GetAssemblyOrModuleSymbol(inputReference)!;
+        var packageName = !string.IsNullOrEmpty(packageNameOverride)
+            ? packageNameOverride
+            : assemblySymbol.Name;
+
+        // Collect all public types from the assembly
+        var types = new List<INamedTypeSymbol>();
+        CollectTypes(assemblySymbol.GlobalNamespace, types, assemblySymbol);
+
+        ValidateRelevantAttributes(types, packageName);
+        ValidateReferencedAssemblies(compilation, assemblySymbol, packageName);
+        ValidatePublicApiTypes(types, packageName);
+
+        var hasGeneratedExports = assemblySymbol.GetAttributes().Any(attribute =>
+            attribute.AttributeClass?.GetAttributes().Any(provider =>
+                provider.AttributeClass?.ToDisplayString() == "Aspire.Hosting.AspireExportProviderAttribute") == true);
+
+        if (types.Count == 0 && !hasGeneratedExports)
+        {
+            Console.WriteLine($"No public types found in assembly: {assemblySymbol.Name}");
+            return false;
+        }
+        if (types.Count == 0)
+        {
+            Console.WriteLine($"Preserving package metadata for generated ATS exports: {assemblySymbol.Name}");
+        }
+
+        var assemblyName = packageName;
+        var assemblyVersion = !string.IsNullOrEmpty(versionOverride)
+            ? versionOverride
+            : assemblySymbol.Identity.Version.ToString();
+        var targetFramework = !string.IsNullOrEmpty(targetFrameworkOverride)
+            ? targetFrameworkOverride
+            : "net10.0";
+
+        // Resolve source link info from assembly metadata or CLI overrides
+        var sourceRepo = sourceRepoOverride;
+        var sourceCommit = sourceCommitOverride;
+
+        if (string.IsNullOrEmpty(sourceRepo) || string.IsNullOrEmpty(sourceCommit))
+        {
+            foreach (var attr in assemblySymbol.GetAttributes())
+            {
+                if (attr.AttributeClass?.ToDisplayString() == "System.Reflection.AssemblyMetadataAttribute"
+                    && attr.ConstructorArguments.Length == 2)
+                {
+                    var key = attr.ConstructorArguments[0].Value as string;
+                    var value = attr.ConstructorArguments[1].Value as string;
+
+                    if (string.IsNullOrEmpty(sourceRepo) && key == "RepositoryUrl")
+                        sourceRepo = value;
+                    if (string.IsNullOrEmpty(sourceCommit) && key == "RepositoryCommit")
+                        sourceCommit = value;
+                }
+
+                // Fallback: extract commit from InformationalVersion (e.g. "1.2.3+abc123def")
+                if (string.IsNullOrEmpty(sourceCommit)
+                    && attr.AttributeClass?.ToDisplayString() == "System.Reflection.AssemblyInformationalVersionAttribute"
+                    && attr.ConstructorArguments.Length == 1)
+                {
+                    var infoVersion = attr.ConstructorArguments[0].Value as string;
+                    if (infoVersion is not null)
+                    {
+                        var plusIdx = infoVersion.IndexOf('+');
+                        if (plusIdx >= 0 && plusIdx + 1 < infoVersion.Length)
+                        {
+                            sourceCommit = infoVersion[( plusIdx + 1 )..];
+                        }
+                    }
+                }
+            }
+        }
+
+        sourceRepo = NormalizeSourceRepository(sourceRepo);
+
+        // Build canonical models
+        var modelBuilder = new CanonicalModelBuilder(compilation);
+        var typeModels = modelBuilder.BuildTypes([.. types]);
+
+        // Enrich with PDB source info (file paths + line ranges)
+        using (var pdbReader = new PdbSourceReader(inputAssembly, sourceRoot))
+        {
+            if (pdbReader.HasPdb)
+            {
+                foreach (var typeModel in typeModels)
+                {
+                    var typeSource = pdbReader.GetTypeSource(typeModel.FullName);
+                    if (typeSource is not null)
+                    {
+                        typeModel.SourceFile = typeSource.File;
+                        // Use only the start line as a single-line anchor. The PDB
+                        // aggregate range spans method implementations, not the type
+                        // declaration. A start-line anchor locates the class (especially
+                        // in multi-type files) without suggesting a misleading range.
+                        typeModel.SourceLines = $"{typeSource.StartLine}-{typeSource.StartLine}";
+                    }
+
+                    foreach (var member in typeModel.Members)
+                    {
+                        var paramNames = member.Parameters?.Select(p => p.Name).ToList();
+                        var memberSource = pdbReader.GetMemberSource(typeModel.FullName, member.Name, paramNames);
+                        if (memberSource is not null)
+                        {
+                            member.SourceFile = memberSource.File;
+                            if (memberSource.StartLine > 0)
+                            {
+                                member.SourceLines = memberSource.ToLineRange();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: infer source file paths for types that had no PDB sequence points
+            // (interfaces without default methods, enums, delegates, const-only classes)
+            foreach (var typeModel in typeModels)
+            {
+                typeModel.SourceFile ??= pdbReader.InferTypeSourceFile(typeModel.FullName, typeModel.Namespace);
+            }
+        }
+
+        // PDB-based type line info often points at the first method body rather than
+        // the type declaration. Read the source file and resolve declaration lines
+        // for all types when source information is available.
+        // Rocket Surgeons Guild: read from the local checkout (sourceRoot) instead of raw.githubusercontent.com.
+        AdjustSourceLinesForTypeDeclarations(typeModels, sourceRoot);
+
+        // Emit JSON schema
+        var schemaJson = SchemaEmitter.EmitAssemblySchema(
+            assemblyName,
+            assemblyVersion,
+            targetFramework,
+            typeModels,
+            sourceRepo,
+            sourceCommit,
+            hasGeneratedExports);
+
+        // Ensure output directory exists
+        var outputDir = Path.GetDirectoryName(outputFile);
+        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+        {
+            Directory.CreateDirectory(outputDir);
+        }
+
+        var wroteFile = StableFileWriter.WriteIfChanged(outputFile, schemaJson);
+        Console.WriteLine($"{( wroteFile ? "Generated" : "Unchanged" )}: {outputFile}");
+        return true;
+    }
+
+    internal static PortableExecutableReference CreateMetadataReference(string path)
+    {
+        var docPath = Path.ChangeExtension(path, "xml");
+        var documentationProvider = File.Exists(docPath)
+            ? XmlDocumentationProvider.CreateFromFile(docPath)
+            : null;
+
+        return MetadataReference.CreateFromFile(path, documentation: documentationProvider);
+    }
+
+    private static void CollectTypes(
+        INamespaceSymbol ns,
+        List<INamedTypeSymbol> types,
+        IAssemblySymbol targetAssembly)
+    {
+        foreach (var type in ns.GetTypeMembers())
+        {
+            CollectTypeAndNested(type, types);
+        }
+
+        foreach (var childNs in ns.GetNamespaceMembers())
+        {
+            if (SymbolEqualityComparer.Default.Equals(childNs.ContainingAssembly, targetAssembly))
+            {
+                CollectTypes(childNs, types, targetAssembly);
+            }
+        }
+    }
+
+    private static void CollectTypeAndNested(INamedTypeSymbol type, List<INamedTypeSymbol> types)
+    {
+        if (type.DeclaredAccessibility == Accessibility.Public && !IsCompilerGenerated(type)
+            && !string.IsNullOrEmpty(type.Name))
+        {
+            types.Add(type);
+
+            // Also collect public nested types
+            foreach (var nestedType in type.GetTypeMembers())
+            {
+                CollectTypeAndNested(nestedType, types);
+            }
+        }
+    }
+
+    private static bool IsCompilerGenerated(INamedTypeSymbol type)
+    {
+        return type.Name.StartsWith("<") ||
+               type.GetAttributes().Any(a =>
+                   a.AttributeClass?.Name == "CompilerGeneratedAttribute");
+    }
+
+    private static void ValidateReferencedAssemblies(
+        Compilation compilation,
+        IAssemblySymbol assembly,
+        string packageName)
+    {
+        var missingReferences = assembly.Modules
+            .SelectMany(module => module.ReferencedAssemblySymbols)
+            .Where(reference => compilation.GetMetadataReference(reference) is null)
+            .Select(reference => reference.Identity.ToString())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(identity => identity, StringComparer.Ordinal)
+            .ToArray();
+
+        if (missingReferences.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Package '{packageName}' assembly '{assembly.Name}' has unresolved referenced assemblies: {string.Join(", ", missingReferences)}.");
+        }
+    }
+
+    private static void ValidateRelevantAttributes(IEnumerable<INamedTypeSymbol> types, string packageName)
+    {
+        foreach (var symbol in EnumerateAttributedSymbols(types))
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                var attributeName = GetRelevantAttributeName(attribute);
+                if (attributeName is null)
+                {
+                    continue;
+                }
+
+                string? problem = null;
+                if (attribute.AttributeClass is null || attribute.AttributeClass.TypeKind == TypeKind.Error)
+                {
+                    problem = "attribute class could not be resolved";
+                }
+                else if (attribute.AttributeConstructor is null ||
+                         attribute.AttributeConstructor.ContainingType.TypeKind == TypeKind.Error)
+                {
+                    problem = "attribute constructor could not be resolved";
+                }
+                else if (attribute.ConstructorArguments.Any(ContainsErrorValue))
+                {
+                    problem = "constructor arguments contain an unresolved value";
+                }
+                else if (attribute.NamedArguments.Any(argument => ContainsErrorValue(argument.Value)))
+                {
+                    problem = "named arguments contain an unresolved value";
+                }
+
+                if (problem is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"Package '{packageName}', symbol '{symbol.ToDisplayString()}', attribute '{attributeName}': {problem}.");
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<ISymbol> EnumerateAttributedSymbols(IEnumerable<INamedTypeSymbol> types)
+    {
+        var seen = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var type in types)
+        {
+            if (seen.Add(type))
+            {
+                yield return type;
+            }
+
+            foreach (var member in type.GetMembers())
+            {
+                if (seen.Add(member))
+                {
+                    yield return member;
+                }
+
+                if (member is IMethodSymbol method)
+                {
+                    foreach (var parameter in method.Parameters)
+                    {
+                        if (seen.Add(parameter))
+                        {
+                            yield return parameter;
+                        }
+                    }
+                }
+                else if (member is IPropertySymbol property)
+                {
+                    foreach (var parameter in property.Parameters)
+                    {
+                        if (seen.Add(parameter))
+                        {
+                            yield return parameter;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static string? GetRelevantAttributeName(AttributeData attribute)
+    {
+        string[] relevantAttributeNames =
+        [
+            "AspireExportAttribute",
+            "AspireExportIgnoreAttribute",
+            "AspireDtoAttribute",
+            "AspireUnionAttribute",
+        ];
+
+        var className = attribute.AttributeClass?.Name;
+        if (className is not null && relevantAttributeNames.Contains(className, StringComparer.Ordinal))
+        {
+            return className;
+        }
+
+        var constructorTypeName = attribute.AttributeConstructor?.ContainingType.Name;
+        if (constructorTypeName is not null &&
+            relevantAttributeNames.Contains(constructorTypeName, StringComparer.Ordinal))
+        {
+            return constructorTypeName;
+        }
+
+        var display = attribute.ToString();
+        return relevantAttributeNames.FirstOrDefault(
+            name => display.Contains(name, StringComparison.Ordinal));
+    }
+
+    private static bool ContainsErrorValue(TypedConstant constant)
+    {
+        return   constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type)  || ( constant.Kind == TypedConstantKind.Array
+            ? constant.Values.Any(ContainsErrorValue)
+            : constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue) ) ;
+    }
+
+    private static void ValidatePublicApiTypes(IEnumerable<INamedTypeSymbol> types, string packageName)
+    {
+        foreach (var type in types)
+        {
+            ValidateTypeReference(type, type.BaseType, "base type", packageName);
+            foreach (var interfaceType in type.Interfaces)
+            {
+                ValidateTypeReference(type, interfaceType, "implemented interface", packageName);
+            }
+            ValidateTypeParameterConstraints(type, type.TypeParameters, packageName);
+
+            if (type.DelegateInvokeMethod is { } delegateInvoke)
+            {
+                ValidateMethodTypes(delegateInvoke, packageName);
+            }
+
+            foreach (var member in type.GetMembers()
+                         .Where(member => member.DeclaredAccessibility == Accessibility.Public &&
+                                          !member.IsImplicitlyDeclared))
+            {
+                switch (member)
+                {
+                    case IMethodSymbol method:
+                        ValidateMethodTypes(method, packageName);
+                        break;
+                    case IPropertySymbol property:
+                        ValidateTypeReference(property, property.Type, "property type", packageName);
+                        foreach (var parameter in property.Parameters)
+                        {
+                            ValidateTypeReference(parameter, parameter.Type, "parameter type", packageName);
+                        }
+                        break;
+                    case IFieldSymbol field:
+                        ValidateTypeReference(field, field.Type, "field type", packageName);
+                        break;
+                    case IEventSymbol eventSymbol:
+                        ValidateTypeReference(eventSymbol, eventSymbol.Type, "event type", packageName);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+    private static void ValidateMethodTypes(IMethodSymbol method, string packageName)
+    {
+        if (method.MethodKind is not MethodKind.Constructor and
+             not MethodKind.StaticConstructor)
+        {
+            ValidateTypeReference(method, method.ReturnType, "return type", packageName);
+        }
+
+        foreach (var parameter in method.Parameters)
+        {
+            ValidateTypeReference(parameter, parameter.Type, "parameter type", packageName);
+        }
+        ValidateTypeParameterConstraints(method, method.TypeParameters, packageName);
+    }
+
+    private static void ValidateTypeParameterConstraints(
+        ISymbol owner,
+        IEnumerable<ITypeParameterSymbol> typeParameters,
+        string packageName)
+    {
+        foreach (var typeParameter in typeParameters)
+        {
+            foreach (var constraintType in typeParameter.ConstraintTypes)
+            {
+                ValidateTypeReference(
+                    owner,
+                    constraintType,
+                    $"constraint for type parameter '{typeParameter.Name}'",
+                    packageName);
+            }
+        }
+    }
+
+    private static void ValidateTypeReference(
+        ISymbol owner,
+        ITypeSymbol? type,
+        string location,
+        string packageName)
+    {
+        if (type is not null && ContainsErrorType(type))
+        {
+            throw new InvalidOperationException(
+                $"Package '{packageName}', symbol '{owner.ToDisplayString()}', {location} contains unresolved public API type '{type.ToDisplayString()}'.");
+        }
+    }
+
+    private static bool ContainsErrorType(ITypeSymbol? type)
+    {
+        return type is not null && ( type.TypeKind == TypeKind.Error || type switch
+        {
+            IArrayTypeSymbol arrayType => ContainsErrorType(arrayType.ElementType),
+            IPointerTypeSymbol pointerType => ContainsErrorType(pointerType.PointedAtType),
+            IFunctionPointerTypeSymbol functionPointer =>
+                ContainsErrorType(functionPointer.Signature.ReturnType) ||
+                functionPointer.Signature.Parameters.Any(parameter => ContainsErrorType(parameter.Type)),
+            INamedTypeSymbol namedType =>
+                ContainsErrorType(namedType.ContainingType) ||
+                namedType.TypeArguments.Any(ContainsErrorType),
+            _ => false,
+        } );
+    }
+
+    /// <summary>
+    /// For source files that contain multiple types, reads the actual source text
+    /// from the local checkout and finds the exact type declaration line. PDB sequence
+    /// points only cover method bodies, so the aggregated StartLine can overshoot
+    /// the real <c>class</c>/<c>interface</c>/<c>struct</c>/etc. keyword by several lines.
+    /// </summary>
+    private static void AdjustSourceLinesForTypeDeclarations(
+        List<CanonicalType> typeModels,
+        string? sourceRoot)
+    {
+        if (string.IsNullOrEmpty(sourceRoot))
+            return;
+
+        foreach (var group in typeModels.Where(t => t.SourceFile is not null).GroupBy(t => t.SourceFile!))
+        {
+            var path = Path.Combine(sourceRoot, group.Key);
+            if (!File.Exists(path))
+            {
+                // Source unavailable: keep any existing PDB-based values rather than inventing a new line anchor.
+                continue;
+            }
+
+            var lines = File.ReadAllLines(path);
+            foreach (var typeModel in group)
+            {
+                var simpleName = PdbSourceReader.NormalizeGenericName(typeModel.Name);
+
+                // For nested types like "Outer.Inner", use just the inner name
+                var dotIdx = simpleName.LastIndexOf('.');
+                if (dotIdx >= 0) simpleName = simpleName[( dotIdx + 1 )..];
+
+                var pdbHintLine = ParseStartLine(typeModel.SourceLines);
+                var declarationLine = FindTypeDeclarationLine(lines, simpleName, pdbHintLine);
+                if (declarationLine > 0)
+                {
+                    typeModel.SourceLines = $"{declarationLine}-{declarationLine}";
+                }
+                else if (typeModel.SourceLines is not null)
+                {
+                    // Regex found no match: drop the PDB-based line so the link
+                    // points to the source file itself rather than a wrong line.
+                    typeModel.SourceLines = null;
+                }
+            }
+        }
+    }
+
+    internal static string? NormalizeSourceRepository(string? sourceRepo)
+    {
+        if (string.IsNullOrWhiteSpace(sourceRepo))
+        {
+            return sourceRepo;
+        }
+
+        var trimmed = sourceRepo.Trim();
+
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var repoUri) &&
+            repoUri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = repoUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 2 &&
+                segments[0].Equals("dotnet", StringComparison.OrdinalIgnoreCase) &&
+                ( segments[1].Equals("aspire", StringComparison.OrdinalIgnoreCase) ||
+                 segments[1].Equals("aspire.git", StringComparison.OrdinalIgnoreCase) ))
+            {
+                return NewAspireRepositoryUrl;
+            }
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
+    /// Scans source lines for a type declaration matching <paramref name="typeName"/>.
+    /// When multiple matches exist (e.g. a nested type reusing a common name),
+    /// the match closest to <paramref name="pdbHintLine"/> wins.
+    /// </summary>
+    internal static int FindTypeDeclarationLine(string[] lines, string typeName, int pdbHintLine)
+    {
+        var escapedName = Regex.Escape(typeName);
+        var pattern = new Regex(
+            $@"\b(?:class|interface|struct|enum|record|extension)\s+{escapedName}\b",
+            RegexOptions.Compiled);
+
+        var bestLine = -1;
+        var bestDistance = int.MaxValue;
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var trimmed = lines[i].TrimStart();
+
+            // Skip comment lines
+            if (trimmed.StartsWith("//") || trimmed.StartsWith("/*") || trimmed.StartsWith("*"))
+                continue;
+
+            if (pattern.IsMatch(lines[i]))
+            {
+                var lineNum = i + 1; // 1-indexed
+                var distance = pdbHintLine > 0 ? Math.Abs(lineNum - pdbHintLine) : 0;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestLine = lineNum;
+                }
+            }
+        }
+
+        return bestLine;
+    }
+
+    internal static int ParseStartLine(string? sourceLines)
+    {
+        if (sourceLines is null) return 0;
+        var dash = sourceLines.IndexOf('-');
+        return dash > 0 && int.TryParse(sourceLines[..dash], out var line) ? line : 0;
+    }
+}

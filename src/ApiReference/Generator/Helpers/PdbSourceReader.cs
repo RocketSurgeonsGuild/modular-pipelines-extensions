@@ -519,9 +519,9 @@ internal sealed class PdbSourceReader : IDisposable
     private string CleanPath(string path)
     {
         path = path.Replace('\\', '/');
-        return  path.StartsWith("/_/") 
-            ?  path[3..] 
-            :  _sourceRoot is not null && path.StartsWith(_sourceRoot, StringComparison.OrdinalIgnoreCase)
+        return path.StartsWith("/_/")
+            ? path[3..]
+            : _sourceRoot is not null && path.StartsWith(_sourceRoot, StringComparison.OrdinalIgnoreCase)
             ? path[_sourceRoot.Length..]
             : path;
     }

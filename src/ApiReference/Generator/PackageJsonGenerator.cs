@@ -372,14 +372,11 @@ public static class PackageJsonGenerator
 
     private static bool ContainsErrorValue(TypedConstant constant)
     {
-        if (constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type))
-        {
-            return true;
-        }
-
-        return  constant.Kind == TypedConstantKind.Array 
-            ?  constant.Values.Any(ContainsErrorValue) 
-            :  constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue);
+        return  constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type) 
+            ?  true 
+            :  constant.Kind == TypedConstantKind.Array
+            ? constant.Values.Any(ContainsErrorValue)
+            : constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue);
     }
 
     private static void ValidatePublicApiTypes(IEnumerable<INamedTypeSymbol> types, string packageName)
@@ -475,18 +472,18 @@ public static class PackageJsonGenerator
 
     private static bool ContainsErrorType(ITypeSymbol? type)
     {
-        return   type is not null && (   type.TypeKind == TypeKind.Error  ||  type switch
-            {
-                IArrayTypeSymbol arrayType => ContainsErrorType(arrayType.ElementType),
-                IPointerTypeSymbol pointerType => ContainsErrorType(pointerType.PointedAtType),
-                IFunctionPointerTypeSymbol functionPointer =>
-                    ContainsErrorType(functionPointer.Signature.ReturnType) ||
-                    functionPointer.Signature.Parameters.Any(parameter => ContainsErrorType(parameter.Type)),
-                INamedTypeSymbol namedType =>
-                    ContainsErrorType(namedType.ContainingType) ||
-                    namedType.TypeArguments.Any(ContainsErrorType),
-                _ => false,
-            }   ) ;
+        return type is not null && ( type.TypeKind == TypeKind.Error || type switch
+        {
+            IArrayTypeSymbol arrayType => ContainsErrorType(arrayType.ElementType),
+            IPointerTypeSymbol pointerType => ContainsErrorType(pointerType.PointedAtType),
+            IFunctionPointerTypeSymbol functionPointer =>
+                ContainsErrorType(functionPointer.Signature.ReturnType) ||
+                functionPointer.Signature.Parameters.Any(parameter => ContainsErrorType(parameter.Type)),
+            INamedTypeSymbol namedType =>
+                ContainsErrorType(namedType.ContainingType) ||
+                namedType.TypeArguments.Any(ContainsErrorType),
+            _ => false,
+        } );
     }
 
     /// <summary>

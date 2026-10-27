@@ -10,7 +10,9 @@ internal static class MSBuildExtensions
         var args = options.Arguments?.ToList() ?? [];
         args.Add($"/bl:\"{log}\"");
         args.Add("/fileLogger");
-        args.Add($"/fileloggerparameters:LogFile=\"{log.Folder}/{log.NameWithoutExtension}.log\"");
+        // The binary log already records everything. The text log only needs what the console shows: at the file logger's default
+        // (detailed) verbosity it reached 2 GB for a solution build and slowed the build down writing it.
+        args.Add($"/fileloggerparameters:LogFile=\"{log.Folder}/{log.NameWithoutExtension}.log\";Verbosity=minimal;Summary");
 
         return options with { Arguments = args };
     }

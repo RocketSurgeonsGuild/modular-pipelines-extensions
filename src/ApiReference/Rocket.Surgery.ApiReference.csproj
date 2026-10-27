@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RollForward>Major</RollForward>
+        <IsPackable>true</IsPackable>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>api-reference</ToolCommandName>
+        <Description>Generates the JSON that the docs sites render their C# API reference from, using the build output of a solution.</Description>
+        <PackageTags>docs;api;reference;astro;starlight</PackageTags>
+        <!--
+            Generator/ is adapted from microsoft/aspire.dev (MIT) and kept close to upstream so fixes can be pulled in; it is
+            written for Nullable=annotations and the default analysis mode, not this repo's stricter settings.
+        -->
+        <Nullable>annotations</Nullable>
+        <AnalysisMode>Default</AnalysisMode>
+        <NoWarn>$(NoWarn);CS1570;CS1591</NoWarn>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Workspaces for XmlDocumentationProvider. -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" />
+        <PackageReference Include="System.CommandLine" />
+    </ItemGroup>
+</Project>

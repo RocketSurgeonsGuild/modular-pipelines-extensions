@@ -1,5 +1,6 @@
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.9.0/hk@2.9.0#/Config.pkl"
+
+import "package://github.com/jdx/hk/releases/download/v2.9.0/hk@2.9.0#/Builtins.pkl"
 
 // Solution the .NET formatters operate against.
 local solution = "modular-pipelines-extensions.slnx"
@@ -9,6 +10,7 @@ local excludeDiagnostics = new Listing<String> {
   "CA2255"
   "CS0103"
   "CS0108"
+  "CS1061"
   "CS0246"
   "CS1591"
   "CS8602"
@@ -29,6 +31,22 @@ local excludeDiagnostics = new Listing<String> {
   "RCS1251"
   "RCS1264"
   "RS0026"
+}
+
+local excludes = new Listing<String> {
+  "**/obj/**/*"
+  "**/bin/**/*"
+  ".git/**/*"
+  ".vs/**/*"
+  ".vscode/**/*"
+  ".idea/**/*"
+  ".claude/**/*"
+  ".agents/**/*"
+  ".apm/**/*"
+  ".copilot/**/*"
+  ".squad/**/*"
+  "**/*.verified.*"
+  "**/*.received.*"
 }
 
 local excludedDiagnosticsString = excludeDiagnostics.join(" ")
@@ -55,38 +73,26 @@ local jbCleanupCode: Step = new Step {
   fix = "jb cleanupcode \(solution) --include=\"{{ files | replace(from=\" \", to=\";\") }}\""
 }
 
-local linters = new Mapping<String, Step> {
+steps {
   ["mise"] = Builtins.mise
+  ["biome"] = Builtins.biome
+  ["tombi"] = Builtins.tombi
+  ["tombi-format"] = Builtins.tombi_format
+  ["xmllint"] = Builtins.xmllint
   ["byte-order-marker"] = Builtins.byte_order_marker
   ["case-conflict"] = Builtins.check_case_conflict
   ["merge-conflict"] = Builtins.check_merge_conflict
   ["symlinks"] = Builtins.check_symlinks
   ["hk-test"] = Builtins.hk_test
   ["pkl-format"] = Builtins.pkl_format
-  ["prettier"] = Builtins.prettier
-  ["prettier-extended"] = (Builtins.prettier) {
-    glob = List("*.*proj", "*.props", "*.targets", "*.xml")
-  }
   // Validate the hand-authored GitHub Actions workflows (.github/workflows/*.yml).
   ["actionlint"] = Builtins.actionlint
   // Safety nets (no external binaries required).
   ["detect-private-key"] = Builtins.detect_private_key
   ["large-files"] = Builtins.check_added_large_files
   ["dotnet-format"] = dotnetFormat
+  // ["oxfmt"] = Builtins.oxfmt
   // ["jb-cleanupcode"] = jbCleanupCode
 }
 
-hooks {
-  ["pre-commit"] {
-    fix = true
-    stash = "git"
-    steps = linters
-  }
-  ["fix"] {
-    fix = true
-    steps = linters
-  }
-  ["check"] {
-    steps = linters
-  }
-}
+exclude = excludes

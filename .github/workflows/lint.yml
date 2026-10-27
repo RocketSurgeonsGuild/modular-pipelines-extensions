@@ -31,11 +31,22 @@ jobs:
                   clean: 'false'
                   fetch-depth: '0'
             - name: 🛠️ Setup mise
-              uses: jdx/mise-action@v4
+              uses: jdx/mise-action@v5
+              env:
+                  # One install at a time: mise downloads dotnet-install.sh to one shared path for every dotnet version, so the
+                  # SDK and runtime installs overwrite it under each other ("failed to execute command") when they run in parallel.
+                  MISE_JOBS: '1'
               with:
                   install: true
                   cache: true
+                  # Restore only: build.yml is the single cache writer, so the saved cache always includes the npm cache.
+                  cache_save: false
+                  cache_key_prefix: mise-v2
+                  experimental: true
                   github_token: ${{ secrets.GITHUB_TOKEN }}
+            # hk's xmllint step needs the xmllint binary, which isn't on the runner image (or in mise).
+            - name: 📦 Install xmllint
+              run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libxml2-utils
             # merge_group: hard gate only — no autofix in the merge queue.
             - name: 🧹 Lint (hk check) — merge_group
               if: github.event_name == 'merge_group'

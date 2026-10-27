@@ -224,7 +224,6 @@ internal sealed class CanonicalModelBuilder(Compilation compilation)
                 RefKind.Out => "out",
                 RefKind.In => "in",
                 RefKind.RefReadOnlyParameter => "ref readonly",
-                RefKind.None => throw new NotImplementedException(),
                 _ => parameter.IsParams ? "params" : null,
             },
         Attributes = ExtractRelevantAttributes(parameter),
@@ -318,7 +317,6 @@ internal sealed class CanonicalModelBuilder(Compilation compilation)
             Accessibility.ProtectedOrInternal => "protected internal",
             Accessibility.ProtectedAndInternal => "private protected",
             Accessibility.Private => "private",
-            Accessibility.NotApplicable => throw new NotImplementedException(),
             _ => null,
         };
         if (access is not null)

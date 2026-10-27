@@ -372,11 +372,9 @@ public static class PackageJsonGenerator
 
     private static bool ContainsErrorValue(TypedConstant constant)
     {
-        return  constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type) 
-            ?  true 
-            :  constant.Kind == TypedConstantKind.Array
+        return   constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type)  || ( constant.Kind == TypedConstantKind.Array
             ? constant.Values.Any(ContainsErrorValue)
-            : constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue);
+            : constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue) ) ;
     }
 
     private static void ValidatePublicApiTypes(IEnumerable<INamedTypeSymbol> types, string packageName)

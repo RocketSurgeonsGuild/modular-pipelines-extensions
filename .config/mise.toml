@@ -8,7 +8,7 @@ dotnet = [
 "github:yvgude/lean-ctx" = { version = "v3.11.4", bin = "lean-ctx" }
 hk = "2.9.0"
 pkl = "0.32.2"
-node = "24.22.2"
+node = "26.13.0"
 actionlint = "1.7.12"
 biome = "2.5.2"
 

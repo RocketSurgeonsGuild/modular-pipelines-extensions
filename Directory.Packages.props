@@ -31,7 +31,7 @@
         <PackageVersion Include="System.CommandLine" Version="2.0.14" />
         <PackageVersion Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
         <PackageVersion Include="ModularPipelines.Node" Version="3.2.8" />
-        <PackageVersion Include="MSBuild.StructuredLogger" Version="2.3.246" />
+        <PackageVersion Include="MSBuild.StructuredLogger" Version="2.3.269" />
         <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
         <PackageVersion Include="Indago" Version="0.0.2" />
         <PackageVersion Include="ModularPipelines.Analyzers" Version="2.48.30" />

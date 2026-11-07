@@ -236,6 +236,12 @@ dist/
 .astro/
 *.local.toml
 
+# Docs build output: Astro's cache and site, and the generated API reference sources.
+docs/.astro/
+docs/.docfx-metadata/
+docs/.generated/
+docs/dist/
+
 # Docs: auto-generated API reference (regenerated in CI via xmldocmd --clean).
 # Keep the hand-written section landing page (api/index.md); ignore the generated tree.
 docs/src/content/docs/api/**

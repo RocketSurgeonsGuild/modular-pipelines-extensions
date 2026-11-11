@@ -235,7 +235,7 @@ public static class PackageJsonGenerator
 
     private static bool IsCompilerGenerated(INamedTypeSymbol type)
     {
-        return type.Name.StartsWith("<") ||
+        return type.Name.StartsWith('<') ||
                type.GetAttributes().Any(a =>
                    a.AttributeClass?.Name == "CompilerGeneratedAttribute");
     }
@@ -372,9 +372,9 @@ public static class PackageJsonGenerator
 
     private static bool ContainsErrorValue(TypedConstant constant)
     {
-        return   constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type)  || ( constant.Kind == TypedConstantKind.Array
+        return constant.Kind == TypedConstantKind.Error || ContainsErrorType(constant.Type) || ( constant.Kind == TypedConstantKind.Array
             ? constant.Values.Any(ContainsErrorValue)
-            : constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue) ) ;
+            : constant.Value is ITypeSymbol typeValue && ContainsErrorType(typeValue) );
     }
 
     private static void ValidatePublicApiTypes(IEnumerable<INamedTypeSymbol> types, string packageName)
@@ -439,7 +439,7 @@ public static class PackageJsonGenerator
 
     private static void ValidateTypeParameterConstraints(
         ISymbol owner,
-        IEnumerable<ITypeParameterSymbol> typeParameters,
+        ImmutableArray<ITypeParameterSymbol> typeParameters,
         string packageName)
     {
         foreach (var typeParameter in typeParameters)
@@ -576,7 +576,7 @@ public static class PackageJsonGenerator
             var trimmed = lines[i].TrimStart();
 
             // Skip comment lines
-            if (trimmed.StartsWith("//") || trimmed.StartsWith("/*") || trimmed.StartsWith("*"))
+            if (trimmed.StartsWith("//") || trimmed.StartsWith("/*") || trimmed.StartsWith('*'))
                 continue;
 
             if (pattern.IsMatch(lines[i]))

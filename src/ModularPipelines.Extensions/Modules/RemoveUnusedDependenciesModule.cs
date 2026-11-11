@@ -40,10 +40,9 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
             .SelectMany(z => File.ReadAllLines(z.Path)
             .Where(z => z.StartsWith("#:package "))
             .Select(l => l["#:package ".Length..].Trim())
-        )
-                                  .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
+        ).ToHashSet(StringComparer.OrdinalIgnoreCase)!;
 
-        context.Logger.LogInformation("Found {Count} package references in code files", codePackageReferences.Count);
+        LogFoundCodePackageReferences(context.Logger, codePackageReferences.Count);
 
         var projectFiles = listedFiles.Where(f => !f.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).ToList();
         // Load all documents and collect all PackageReference names across the whole repo
@@ -76,7 +75,7 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
                 if (name is null) continue;
                 if (!allPackageReferences.Contains(name))
                 {
-                    context.Logger.LogInformation("Removing unused PackageVersion: {Package} from {File}", name, path);
+                    LogRemovingUnusedPackageVersion(context.Logger, name, path);
                     pv.Remove();
                     removed++;
                     modified = true;
@@ -90,7 +89,7 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
                 if (name is null) continue;
                 if (globalPackageReferences.Contains(name))
                 {
-                    context.Logger.LogInformation("Removing duplicate PackageReference (covered by GlobalPackageReference): {Package} from {File}", name, path);
+                    LogRemovingDuplicatePackageReference(context.Logger, name, path);
                     pr.Remove();
                     removed++;
                     modified = true;
@@ -101,11 +100,23 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
                 doc.Save(path, SaveOptions.None);
         }
 
-        context.Logger.LogInformation("Removed {Count} unused/duplicate entries across {Files} files", removed, projectFiles.Count);
+        LogRemovedUnusedDuplicateEntries(context.Logger, removed, projectFiles.Count);
         return new(removed, projectFiles.Count);
     }
 
     public record Result(int EntriesRemoved, int FilesScanned);
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Removing unused PackageVersion: {Package} from {File}")]
+    private static partial void LogRemovingUnusedPackageVersion(ILogger logger, string package, string file);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Removing duplicate PackageReference (covered by GlobalPackageReference): {Package} from {File}")]
+    private static partial void LogRemovingDuplicatePackageReference(ILogger logger, string package, string file);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "Found {Count} package references in code files")]
+    private static partial void LogFoundCodePackageReferences(ILogger logger, int count);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Information, Message = "Removed {Count} unused/duplicate entries across {Files} files")]
+    private static partial void LogRemovedUnusedDuplicateEntries(ILogger logger, int count, int files);
 }
 
 file record GitLsFilesOptions : CommandLineToolOptions;

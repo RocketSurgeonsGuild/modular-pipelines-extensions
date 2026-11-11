@@ -10,10 +10,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 /// </summary>
 [DependsOn<TestSolution>]
 public partial class GenerateCodeCoverageReports
-(
-    IMise mise,
-    TestSettings testSettings,
-    SharedSettings sharedSettings) : Module<GenerateCodeCoverageReports.Result>
+(TestSettings testSettings) : Module<GenerateCodeCoverageReports.Result>
 {
     private const string ReportGeneratorCommandName = "reportgenerator";
 

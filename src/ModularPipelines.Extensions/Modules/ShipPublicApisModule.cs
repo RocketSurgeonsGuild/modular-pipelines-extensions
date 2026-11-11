@@ -51,7 +51,7 @@ public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Modul
             await File.WriteAllLinesAsync(shippedPath, allShipped, cancellationToken);
             await File.WriteAllLinesAsync(unshipped.Path, ["#nullable enable"], cancellationToken);
 
-            context.Logger.LogInformation("Shipped {Count} APIs from {File}", newEntries.Count, unshipped.Path);
+            LogShippedApis(context.Logger, newEntries.Count, unshipped.Path);
             shipped++;
         }
 
@@ -63,4 +63,7 @@ public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Modul
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") is not null;
 
     public record Result(int FilesShipped, int FilesFound);
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Shipped {Count} APIs from {File}")]
+    private static partial void LogShippedApis(ILogger logger, int count, string file);
 }

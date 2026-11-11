@@ -3432,6 +3432,10 @@ dotnet_diagnostic.rcs9010.severity = silent
 # Specify ExportCodeFixProviderAttribute.Name
 dotnet_diagnostic.rcs9011.severity = silent
 
+# ZeroAlloc Analyzer
+
+dotnet_diagnostic.ZA0601.severity = suggestion
+
 # Refactorings
 
 roslynator_refactoring.add_all_properties_to_initializer.enabled = true

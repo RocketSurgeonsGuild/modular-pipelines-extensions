@@ -35,19 +35,19 @@ Reference the package from the build host, next to the core package:
 #:package Rocket.Surgery.ModularPipelines.Extensions.Distributed@<version>
 ```
 
-The package exports a convention, so a build host that imports conventions (`#:property ImportConventions=true` and
-`ConventionsPlugin`) picks it up without code changes. The convention calls `AddRocketDistributed` with the settings read from the
-environment and configuration.
+The package exports a Dovetail joint, so a build host that applies the joints (`ConfigureDovetail()`, see the
+[Readme](../Readme.md#the-build-host)) picks it up without code changes. The joint calls `AddRocketDistributed` with the settings read
+from the environment and configuration.
 
-Without the conventions plugin, call it yourself:
+Without the joints, call it yourself:
 
 ```csharp
 var builder = Pipeline.CreateBuilder(args);
 builder.AddRocketDistributed(options => options.MaxParallelism = 2);
 ```
 
-With the conventions plugin, call `AddRocketDistributed` **before** `AddPlugin(new ConventionsPlugin(...))`: the convention then
-sees that it ran and steps aside. Calling it twice throws.
+With the joints, call `AddRocketDistributed` **before** `ConfigureDovetail()`: the joint then sees that it ran and steps aside.
+Calling it twice throws.
 
 Distributed mode is used only when **all** of these hold:
 

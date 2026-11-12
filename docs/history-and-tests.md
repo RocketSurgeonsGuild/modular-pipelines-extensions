@@ -35,7 +35,7 @@ The folders are ignored by git. A CI agent starts empty, so cache them between r
       mp-history-${{ github.workflow }}-main-
 ```
 
-The `RunHistoryConvention` applies this. A pipeline that does not use the conventions calls `builder.AddRocketHistory()`, which also
+The `RunHistoryJoint` applies this. A pipeline that does not apply the Dovetail joints calls `builder.AddRocketHistory()`, which also
 takes a function to change the options read from configuration.
 
 ## Tests
@@ -88,7 +88,7 @@ A source generator in the package then writes `TestShard1` to `TestShardN` into 
 - `TestSolution` skips itself, so no test runs twice.
 - `GenerateCodeCoverageReports` waits for every shard and reads all of their coverage.
 
-The shards are added by the `TestShardsConvention`. A build host that does not import conventions calls
+The shards are added by the `TestShardsJoint`. A build host that does not apply the Dovetail joints calls
 `builder.AddRocketTestShards()`.
 
 ### How projects are assigned

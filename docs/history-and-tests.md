@@ -64,6 +64,51 @@ IncludeTests: # only these projects
 
 `TestFramework` splits a multi-targeted suite by framework the same way.
 
+## Test shards
+
+`TestSolution` is one module, and ModularPipelines places work by module type, so its test projects always run in one process. Test
+shards split them between several modules instead, which a distributed run can hand to different workers. Set the number of shards
+in the build host:
+
+```csharp
+#:property RocketTestShards=4
+```
+
+or in a props file next to it (`<RocketTestShards>4</RocketTestShards>`). Passing it to one run also works:
+`dotnet run build/Build.cs -p:RocketTestShards=4`. Unset, `0` or `1` turns shards off. Any other value that is not a whole number
+up to 64 is reported as warning `RSMP0001` and turns them off too.
+
+A source generator in the package then writes `TestShard1` to `TestShardN` into the build host. With shards:
+
+- `TestShardPlan` runs once, on the coordinator, after the restore. It finds the test projects the way `TestSolution` does
+  (`IncludeTests`, `ExcludeTests` and `TestFramework` apply) and splits them between the shards.
+- Each shard runs its projects exactly as `TestSolution` does in `PerProject` mode: a sub module per project, `TestParallelism` at a
+  time, with each project's TRX and coverage in its own folder under the tests directory, failing at the end with every project that
+  failed.
+- `TestSolution` skips itself, so no test runs twice.
+- `GenerateCodeCoverageReports` waits for every shard and reads all of their coverage.
+
+The shards are added by the `TestShardsConvention`. A build host that does not import conventions calls
+`builder.AddRocketTestShards()`.
+
+### How projects are assigned
+
+Projects are placed longest first, each on the shard with the least work so far, using the last duration of each project's sub
+module from `.modularpipelines/estimates` (recorded under `TestSolution` or a shard). A project with no duration counts as the median of
+the others. With no durations at all, projects are dealt round-robin in order of their path. The split depends only on its input, so
+it does not change between runs unless the durations or the projects do.
+
+The split is worked out **once**, by `TestShardPlan` on the coordinator, and reaches the shards as that module's result, which a
+distributed run sends to every worker. Workers never compute it themselves. Their estimates folders can differ from the coordinator's
+(each machine restores its own cache, and a worker records the durations of what it ran), and two different splits could run a
+project twice or not at all. The coordinator's durations only steer the balance, never which projects run.
+
+The durations of a shard that ran on a worker are saved on that worker. Cache `.modularpipelines` on every instance, or the
+coordinator keeps balancing by older durations (or by path).
+
+Splitting one large test project across shards by test class is not supported yet. TUnit and Microsoft.Testing.Platform can run a
+subset with `--treenode-filter "/*/*/<Class>/*"`, but the shards would first have to list each project's classes.
+
 ## Coverage
 
 Unless `RunSettings` names a file of your own, the library writes the coverage settings on every run. They collect coverage of the
@@ -89,9 +134,10 @@ CoverageReports:
 
 The modules that read or write the whole run (GitVersion, restore, build, pack, docs, readme, public API shipping, dependency cleanup
 and the coverage report) require the `rocket-coordinator` capability. Every process that is not a distributed worker advertises it,
-so a standalone run behaves as before. `TestSolution` does not require it: on a worker it restores and builds what it tests, and its
-results travel back to the coordinator as the `rocket-test-results` artifact, which the coverage report restores into the tests
-directory.
+so a standalone run behaves as before. `TestSolution` and the test shards do not require it: on a worker they restore and build what
+they test, and their results travel back to the coordinator as an artifact (`rocket-test-results`, or `rocket-test-shard-results` for
+each shard), which the coverage report restores into the tests directory. `TestShardPlan` does require it, so the split of the tests
+is always made on the coordinator.
 
 ## Docs
 

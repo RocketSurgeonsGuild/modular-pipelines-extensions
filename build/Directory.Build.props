@@ -2,6 +2,15 @@
     <PropertyGroup>
         <BuildScriptsRoot>$(MSBuildThisFileDirectory)</BuildScriptsRoot>
     </PropertyGroup>
+    <!-- The package brings the test shard generator and its props; the #:project reference to the library does not, so add them here. -->
+    <Import Project="../src/ModularPipelines.Extensions/build/Rocket.Surgery.ModularPipelines.Extensions.props" />
+    <ItemGroup>
+        <ProjectReference
+            Include="../src/ModularPipelines.Extensions.Analyzers/Rocket.Surgery.ModularPipelines.Extensions.Analyzers.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+        />
+    </ItemGroup>
     <ItemGroup>
         <ProjectProperty Include="BuildScriptsRoot" />
     </ItemGroup>

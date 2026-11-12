@@ -115,11 +115,14 @@ The core modules are placed like this:
 | Module                                                                                                                      | Runs on                       |
 | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | GitVersion, Restore, Build, package icon, Pack, Docs, Ship public APIs, Readme, Remove unused dependencies, coverage report | the master only               |
-| `TestSolution`                                                                                                              | any process, master or worker |
+| `TestShardPlan` (with test shards)                                                                                          | the master only               |
+| `TestSolution`, or the test shards `TestShard1` to `TestShardN`                                                             | any process, master or worker |
 | Your own modules without a capability requirement (for example AOT sample publishing)                                       | any process, master or worker |
 
 The unit of distribution is the **module**. `TestSolution` is one module: it runs every test project as a sub module, in parallel,
-on whichever process claims it. The test projects are not spread across workers. Distribution helps by running `TestSolution`, and
+on whichever process claims it. The test projects are not spread across workers, unless you turn on
+[test shards](history-and-tests.md#test-shards): `#:property RocketTestShards=<n>` in the build host splits the tests into `n` modules
+that different workers can run. Set it to the number of instances, so each runner can take one shard. Distribution helps by running `TestSolution`, and
 your own modules that are not pinned to the coordinator, on a worker at the same time as the master packs and builds the docs. Expect
 the gain to be roughly the shorter of those two paths, minus the time a worker spends setting up and building what it tests. A
 pipeline whose modules are nearly all pinned to the coordinator gains nothing, so keep the matrix small: two or three instances.

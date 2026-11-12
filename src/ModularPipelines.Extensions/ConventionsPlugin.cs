@@ -1,5 +1,6 @@
 using System.Reflection;
 using Indago.Abstractions;
+using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
@@ -28,6 +29,7 @@ public class ConventionsPlugin(ConventionContextBuilder contextBuilder, ModuleDe
                                         )
         );
 
-        builder.AddModules([.. modules.Where(m => moduleDelegate?.Invoke(m) != false)]);
+        // The test shard plan is only wanted with test shards, which the TestShardsConvention adds it with.
+        builder.AddModules([.. modules.Where(m => m != typeof(TestShardPlan) && moduleDelegate?.Invoke(m) != false)]);
     }
 }

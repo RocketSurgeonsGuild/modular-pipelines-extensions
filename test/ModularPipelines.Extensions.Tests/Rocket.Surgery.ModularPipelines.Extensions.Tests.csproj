@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net11.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <!-- As in the other Rocket Surgeons Guild repositories (Dovetail, LaunchPad). -->
+        <Verify_SponsorshipExemption>OpenSource</Verify_SponsorshipExemption>
+        <Verify_SponsorshipExemptionUntil>$([System.DateTime]::Today.AddDays(300).ToString("yyyy-MM"))</Verify_SponsorshipExemptionUntil>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <PackageReference Include="TUnit" />
+        <PackageReference Include="Verify.TUnit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Snapshots of generated code are data, not part of the test project. -->
+        <Compile Remove="**/*.verified.cs;**/*.received.cs" />
+        <None Include="**/*.verified.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
+        <ProjectReference Include="../../src/ModularPipelines.Extensions.Analyzers/Rocket.Surgery.ModularPipelines.Extensions.Analyzers.csproj" />
+    </ItemGroup>
+</Project>

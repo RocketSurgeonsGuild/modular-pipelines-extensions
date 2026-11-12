@@ -4,7 +4,32 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackTestShardGenerator</TargetsForTfmSpecificContentInPackage>
     </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Built first and packed as an analyzer; the library itself does not reference it. -->
+        <ProjectReference
+            Include="../ModularPipelines.Extensions.Analyzers/Rocket.Surgery.ModularPipelines.Extensions.Analyzers.csproj"
+            ReferenceOutputAssembly="false"
+            PrivateAssets="all"
+        />
+        <None Include="build/Rocket.Surgery.ModularPipelines.Extensions.props" Pack="true" PackagePath="build;buildTransitive" />
+        <InternalsVisibleTo Include="Rocket.Surgery.ModularPipelines.Extensions.Tests" />
+    </ItemGroup>
+
+    <Target Name="PackTestShardGenerator">
+        <MSBuild
+            Projects="../ModularPipelines.Extensions.Analyzers/Rocket.Surgery.ModularPipelines.Extensions.Analyzers.csproj"
+            Targets="GetTargetPath"
+            Properties="Configuration=$(Configuration)"
+        >
+            <Output TaskParameter="TargetOutputs" ItemName="TestShardGeneratorAssembly" />
+        </MSBuild>
+        <ItemGroup>
+            <TfmSpecificPackageFile Include="@(TestShardGeneratorAssembly)" PackagePath="analyzers/dotnet/cs" />
+        </ItemGroup>
+    </Target>
 
     <ItemGroup>
         <PackageReference Include="GitignoreParserNet" />

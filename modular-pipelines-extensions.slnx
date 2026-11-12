@@ -6,7 +6,13 @@
   <Folder Name="/src/ModularPipelines.Extensions/">
     <Project Path="src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
   </Folder>
+  <Folder Name="/src/ModularPipelines.Extensions.Analyzers/">
+    <Project Path="src/ModularPipelines.Extensions.Analyzers/Rocket.Surgery.ModularPipelines.Extensions.Analyzers.csproj" />
+  </Folder>
   <Folder Name="/src/ModularPipelines.Extensions.Distributed/">
     <Project Path="src/ModularPipelines.Extensions.Distributed/Rocket.Surgery.ModularPipelines.Extensions.Distributed.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/ModularPipelines.Extensions.Tests/Rocket.Surgery.ModularPipelines.Extensions.Tests.csproj" />
   </Folder>
 </Solution>

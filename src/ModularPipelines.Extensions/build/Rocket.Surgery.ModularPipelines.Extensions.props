@@ -1,0 +1,9 @@
+<Project>
+    <!--
+        Hands RocketTestShards to the test shard generator, which writes TestShard1..TestShardN into the build host when it is more than
+        one: `#:property RocketTestShards=4` in a file-based build host, or <RocketTestShards>4</RocketTestShards> in a props file.
+    -->
+    <ItemGroup>
+        <CompilerVisibleProperty Include="RocketTestShards" />
+    </ItemGroup>
+</Project>

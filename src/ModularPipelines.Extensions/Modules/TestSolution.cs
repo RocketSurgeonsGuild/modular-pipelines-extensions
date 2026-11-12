@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -6,9 +5,6 @@ using Microsoft.Extensions.Options;
 using ModularPipelines.Caching;
 using ModularPipelines.Distributed;
 using ModularPipelines.Exceptions;
-using Proto.Promises;
-using Proto.Promises.Threading;
-using InvalidOperationException = System.InvalidOperationException;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -20,7 +16,8 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///     Sub modules run in this module's process, so the module as a whole is what a distributed run hands to a worker. A worker does
 ///     not run <see cref="RestoreSolution" /> or <see cref="BuildSolution" /> (they need the coordinator), so there the tests restore
 ///     and build what they run themselves, and the results are handed back to the coordinator as the <see cref="ResultsArtifact" />
-///     artifact, which <see cref="GenerateCodeCoverageReports" /> restores.
+///     artifact, which <see cref="GenerateCodeCoverageReports" /> restores. With test shards (see <see cref="TestShards" />) this module
+///     skips itself: the shards run the tests.
 /// </remarks>
 [DependsOn<RestoreSolution>]
 [DependsOn<BuildSolution>]
@@ -32,7 +29,8 @@ public partial class TestSolution
     TestSettings testSettings,
     IOptions<DistributedOptions> distributedOptions,
     IOptions<ModuleCacheOptions> moduleCacheOptions,
-    SolutionSettings settings = null!) : Module<TestSolution.Result?>
+    SolutionSettings settings = null!,
+    TestShardSet? shards = null) : Module<TestSolution.Result?>
 {
     /// <summary>The artifact that carries a worker's test results to the coordinator.</summary>
     public const string ResultsArtifact = "rocket-test-results";
@@ -44,8 +42,10 @@ public partial class TestSolution
     public const string ResultsArtifactPath = ".modularpipelines/test-results";
 
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
-        _ => SkipDecision.When(settings is null || !testSettings.IsEnabled,
-            "Tests are disabled or no solution was provided")
+        _ => settings is null || !testSettings.IsEnabled
+            ? SkipDecision.Skip("Tests are disabled or no solution was provided")
+            // The shards run every test project between them, so running them here as well would run each test twice.
+            : SkipDecision.When(shards is { IsEnabled: true }, $"The tests run in {shards?.Count} test shards")
     );
 
     internal static FolderPath GetResultsArtifactFolder(ModuleCacheOptions options) =>
@@ -64,7 +64,7 @@ public partial class TestSolution
 
         if (isWorker)
         {
-            await context.Tools.DotNet.RestoreAsync(new() { ProjectSolution = settings.Solution, IgnoreFailedSources = true }, new(), cancellationToken);
+            await TestProjectRunner.RestoreOnceAsync(context, settings.Solution, cancellationToken);
         }
 
         var projects = await SolutionProjects.EvaluateAsync(context, sharedSettings, settings.Solution, cancellationToken);
@@ -85,12 +85,7 @@ public partial class TestSolution
             await testSettings.TestsDirectory.CopyToAsync(staging, cancellationToken: cancellationToken);
         }
 
-        return result.Projects.Where(project => project.Error is not null).ToArray() is { Length: > 0 } failed
-            ? throw new InvalidOperationException(
-                $"Tests failed in {failed.Length} of {result.Projects.Count} projects:{Environment.NewLine}"
-              + string.Join(Environment.NewLine, failed.Select(project => $"  {project.Name}: {project.Error}"))
-            )
-            : result;
+        return TestProjectRunner.ThrowIfAnyFailed(result with { StagedOnWorker = isWorker });
     }
 
     private async Task<Result> RunProjectsAsync(
@@ -104,38 +99,8 @@ public partial class TestSolution
         var selected = projects.Where(project => project.IsTestProject && SolutionProjects.IsSelected(project, testSettings)).ToArray();
         LogSelection(context, projects, selected);
 
-        var outcomes = new ConcurrentBag<ProjectResult>();
-        await ParallelAsync.ForEach(
-            selected,
-            new ParallelAsyncOptions { CancelationToken = cancellationToken.ToCancelationToken(), MaxDegreeOfParallelism = testSettings.Parallelism },
-            async (project, token) =>
-            {
-                var name = testSettings.TestFramework is { } framework ? $"{project.AssemblyName} ({framework})" : project.AssemblyName;
-                var resultsDirectory = testSettings.TestsDirectory.GetFolder(
-                    testSettings.TestFramework is { } tfm ? $"{project.AssemblyName}_{tfm}" : project.AssemblyName
-                );
-                try
-                {
-                    var commandResult = await context.RunSubModuleAsync(
-                        name,
-                        subToken => context.Tools.DotNet.TestAsync(
-                            CreateOptions(isWorker, resultsDirectory) with { Project = project.Path.Path },
-                            new(),
-                            subToken
-                        ),
-                        cancellationToken
-                    );
-                    outcomes.Add(new(name, project.Path, resultsDirectory, commandResult, null));
-                }
-                // One failing project must not stop the others; the module fails once they all finished.
-                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-                {
-                    outcomes.Add(new(name, project.Path, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message)));
-                }
-            }
-        );
-
-        return new(null, FindTrxFiles(), binlog, [.. outcomes.OrderBy(outcome => outcome.Name, StringComparer.Ordinal)]);
+        var outcomes = await TestProjectRunner.RunProjectsAsync(context, selected, settings, testSettings, testSettings.RunSettings, isWorker, cancellationToken);
+        return new(null, TestProjectRunner.FindTrxFiles(testSettings.TestsDirectory), binlog, outcomes);
     }
 
     private async Task<Result> RunSolutionAsync(
@@ -151,53 +116,18 @@ public partial class TestSolution
         try
         {
             var commandResult = await context.Tools.DotNet.TestAsync(
-                CreateOptions(isWorker, resultsDirectory) with { Solution = solution },
+                TestProjectRunner.CreateOptions(settings, testSettings, testSettings.RunSettings, isWorker, resultsDirectory) with { Solution = solution },
                 new(),
                 cancellationToken
             );
-            return new(commandResult, FindTrxFiles(), binlog, [new(settings.Solution.Name, settings.Solution, resultsDirectory, commandResult, null)]);
+            return new(commandResult, TestProjectRunner.FindTrxFiles(testSettings.TestsDirectory), binlog, [new(settings.Solution.Name, settings.Solution, resultsDirectory, commandResult, null)]);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             var commandResult = ( ex as CommandException )?.Result;
-            return new(commandResult, FindTrxFiles(), binlog, [new(settings.Solution.Name, settings.Solution, resultsDirectory, commandResult, FirstLine(ex.Message))]);
+            return new(commandResult, TestProjectRunner.FindTrxFiles(testSettings.TestsDirectory), binlog, [new(settings.Solution.Name, settings.Solution, resultsDirectory, commandResult, TestProjectRunner.FirstLine(ex.Message))]);
         }
     }
-
-    private static string FirstLine(string message) => message.Split('\n', 2)[0].TrimEnd();
-
-    private DotNetTestOptions CreateOptions(bool isWorker, FolderPath resultsDirectory) =>
-        new()
-        {
-            Configuration = settings.Configuration,
-            Framework = testSettings.TestFramework,
-            // A worker did not run the coordinator's restore and build, so its tests build what they run.
-            NoRestore = !isWorker,
-            NoBuild = !isWorker,
-            ResultsDirectory = resultsDirectory,
-            Arguments =
-            [
-                "--coverage",
-                "--coverage-settings", testSettings.RunSettings,
-                "--coverage-output-format", "cobertura",
-                // One TRX per test application, under its default name: a single --report-trx-filename made every assembly (and
-                // target framework) write the same file, so only the last one's results were kept.
-                "--report-trx",
-                // Without it, dotnet test also merges the TRX files (and the coverage) into merged/, and a reader of every TRX counts
-                // each test twice.
-                "--no-artifact-post-processing",
-            ],
-        };
-
-    // One report per test application. --no-artifact-post-processing keeps the .NET 11 SDK from writing merged/; skipping that folder
-    // anyway keeps a combined report from being listed alongside the ones it repeats.
-    private ImmutableList<FilePath> FindTrxFiles() =>
-        [.. testSettings
-           .TestsDirectory
-           .GetFiles(
-                x => x.Name.EndsWith(".trx", StringComparison.OrdinalIgnoreCase),
-                x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
-            )];
 
     private void LogSelection(IModuleContext context, IReadOnlyList<SolutionProject> projects, IReadOnlyList<SolutionProject> selected)
     {
@@ -250,7 +180,14 @@ public partial class TestSolution
     /// <param name="TrxFiles">The TRX report of each test module (one per test project and target framework).</param>
     /// <param name="Binlog">The binary log location.</param>
     /// <param name="Projects">The outcome of each test run: each project, or the solution.</param>
-    public record Result(CommandResult? CommandResult, ImmutableList<FilePath> TrxFiles, FilePath Binlog, ImmutableList<ProjectResult> Projects);
+    public record Result(CommandResult? CommandResult, ImmutableList<FilePath> TrxFiles, FilePath Binlog, ImmutableList<ProjectResult> Projects)
+    {
+        /// <summary>
+        ///     Whether a distributed worker produced the result and staged its files as the module's results artifact, which
+        ///     <see cref="GenerateCodeCoverageReports" /> then downloads.
+        /// </summary>
+        public bool StagedOnWorker { get; init; }
+    }
 
     /// <summary>The outcome of one <c>dotnet test</c>.</summary>
     /// <param name="Name">The sub module's name.</param>

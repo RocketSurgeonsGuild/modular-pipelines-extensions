@@ -208,9 +208,9 @@ public sealed class RocketDistributedOptions
 
     private static int? ParseInt32(string? value, string name, int minimum)
     {
-        return  value is null 
-            ?   null  
-            :   !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < minimum
+        return value is null
+            ? null
+            : !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < minimum
             ? throw new InvalidOperationException($"{name} must be an integer greater than or equal to {minimum}, but was '{value}'.")
             : parsed;
     }

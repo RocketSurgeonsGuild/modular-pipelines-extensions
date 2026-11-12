@@ -29,8 +29,8 @@ public partial class PackSolution
                                cancellationToken
                            );
 
-        var packages = nugetFolder.GetFiles(z => z.Extension == "nupkg").ToImmutableList();
-        var symbols = nugetFolder.GetFiles(z => z.Extension == "snupkg").ToImmutableList();
+        var packages = nugetFolder.GetFiles(z => z.Extension == ".nupkg").ToImmutableList();
+        var symbols = nugetFolder.GetFiles(z => z.Extension == ".snupkg").ToImmutableList();
 
         return new(result, packages, symbols);
     }

@@ -14,6 +14,7 @@
         <PackageReference Include="ModularPipelines" />
         <PackageReference Include="ModularPipelines.DotNet" />
         <PackageReference Include="ModularPipelines.Git" />
+        <PackageReference Include="ProtoPromise" />
         <PackageReference Include="MSBuild.StructuredLogger" />
         <PackageReference Include="Riok.Mapperly" />
         <PackageReference Include="Rocket.Surgery.Conventions" />

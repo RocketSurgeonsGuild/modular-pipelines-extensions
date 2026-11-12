@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<GitVersionModule>]
+[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Module<ShipPublicApisModule.Result?>
 {
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
   <DataCollectionRunSettings>
     <DataCollectors>
@@ -8,10 +8,19 @@
           <CodeCoverage>
             <EnableStaticManagedInstrumentation>True</EnableStaticManagedInstrumentation>
             <EnableDynamicManagedInstrumentation>True</EnableDynamicManagedInstrumentation>
-            <Attributes />
+            <Attributes>
+              <Exclude>
+                <Attribute>^System\.CodeDom\.Compiler\.GeneratedCodeAttribute$</Attribute>
+                <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute>
+                <Attribute>^System\.Diagnostics\.DebuggerHiddenAttribute$</Attribute>
+                <Attribute>^System\.Diagnostics\.DebuggerNonUserCodeAttribute$</Attribute>
+                <Attribute>^System\.Runtime\.CompilerServices\.CompilerGeneratedAttribute$</Attribute>
+              </Exclude>
+            </Attributes>
             <Functions />
             <Sources />
-            <ModulePaths/>
+            <!-- TestSolution fills these in: the assemblies of the solution's non-test projects, never test assemblies. -->
+            <ModulePaths />
           </CodeCoverage>
         </Configuration>
       </DataCollector>

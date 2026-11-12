@@ -7,11 +7,14 @@
 #:property JsonSerializerIsReflectionEnabledByDefault=true
 
 using Build;
+using Microsoft.Extensions.Configuration;
 using ModularPipelines;
 using Rocket.Surgery.ModularPipelines.Extensions;
 using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 var builder = Pipeline.CreateBuilder(args);
+// docs/ holds plain Markdown, not a docs site to build.
+builder.Configuration.AddInMemoryCollection([new("Docs:Enabled", "false")]);
 builder.AddPlugin(new ConventionsPlugin(
     ConventionContextBuilder.Create(Imports.Instance)
         .AddIfMissing(nameof(MyAssembly.Project.BuildScriptsRoot), MyAssembly.Project.BuildScriptsRoot),

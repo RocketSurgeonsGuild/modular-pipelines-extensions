@@ -252,3 +252,6 @@ docs/api/
 .agents/skills/fnox
 .agents/skills/hk-configure
 .agents/skills/hk-debug
+
+# ModularPipelines run history, estimates and module cache (restored by CI caches, never committed)
+.modularpipelines/

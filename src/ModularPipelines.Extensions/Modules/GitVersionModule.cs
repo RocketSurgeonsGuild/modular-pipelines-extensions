@@ -4,6 +4,7 @@ using ModularPipelines.Git;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<GitVersionModule.Result>
 {
     protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)

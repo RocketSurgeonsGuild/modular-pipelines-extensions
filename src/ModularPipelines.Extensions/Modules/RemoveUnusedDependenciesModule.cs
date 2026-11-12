@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSettings) : Module<RemoveUnusedDependenciesModule.Result>
 {
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(

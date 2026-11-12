@@ -85,7 +85,7 @@ public partial class TestSolution
             await testSettings.TestsDirectory.CopyToAsync(staging, cancellationToken: cancellationToken);
         }
 
-        return  result.Projects.Where(project => project.Error is not null).ToArray() is { Length: > 0 } failed 
+        return result.Projects.Where(project => project.Error is not null).ToArray() is { Length: > 0 } failed
             ? throw new InvalidOperationException(
                 $"Tests failed in {failed.Length} of {result.Projects.Count} projects:{Environment.NewLine}"
               + string.Join(Environment.NewLine, failed.Select(project => $"  {project.Name}: {project.Error}"))

@@ -20,7 +20,7 @@ public partial interface IMise
         CancellationToken cancellationToken = default);
 }
 
-internal partial class Mise(ICommandContext command) : IMise
+internal class Mise(ICommandContext command) : IMise
 {
     public Task<CommandResult> Execute(Span<string> arguments, CommandExecutionOptions? executionOptions = null, CancellationToken cancellationToken = default)
     {

@@ -1,17 +1,16 @@
 using ModularPipelines.FileSystem;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 public static class FolderExtensions
 {
-    extension(Folder folder)
+    extension(FolderPath folder)
     {
-        public static Folder operator /(Folder left, string right) => left.GetFolder(right);
-        public static File operator +(Folder left, string right) => left.GetFile(right);
+        public static FolderPath operator /(FolderPath left, string right) => left.GetFolder(right);
+        public static FilePath operator +(FolderPath left, string right) => left.GetFile(right);
     }
 
-    public static Folder EnsureExists(this Folder folder)
+    public static FolderPath EnsureExists(this FolderPath folder)
     {
         if (!folder.Exists)
         {

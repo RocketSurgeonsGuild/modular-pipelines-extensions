@@ -1,18 +1,15 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Rocket.Surgery.Conventions.DependencyInjection;
-using Rocket.Surgery.ModularPipelines.Extensions.Interception;
+using Rocket.Surgery.ModularPipelines.Extensions.Support;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
 
 [ExportConvention]
-internal class ModulePipelinesConvention : IServiceAsyncConvention
+internal class ModulePipelinesConvention : IPipelineBuilderConvention
 {
-    public ValueTask Register(IConventionContext context, IConfiguration configuration, IServiceCollection services, CancellationToken cancellationToken)
+    public void Register(IConventionContext context, PipelineBuilder builder)
     {
-        services.AddCommandInterceptors<SolutionInterceptor>();
-        // services.AddCommandInterceptors<LoggingInterceptor>();
-        services.AddCommandInterceptors<RootDirectoryInterceptor>();
-        return ValueTask.CompletedTask;
+        // A factory rather than AddCommandInterceptor<T>: the interceptor needs the pipeline's working directory, which only the builder knows.
+        var workingDirectory = builder.WorkingDirectory;
+        builder.Services.AddSingleton<ICommandInterceptor>(provider => new RootDirectoryInterceptor(provider.GetRequiredService<SharedSettings>(), workingDirectory));
     }
 }

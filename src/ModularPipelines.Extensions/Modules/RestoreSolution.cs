@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -11,22 +10,23 @@ public partial class RestoreSolution
     ArtifactSettings artifactSettings,
     SolutionSettings solutionSettings = null!) : Module<RestoreSolution.Result>
 {
-    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var binlog = artifactSettings.LogsDirectory.GetFile("restore.binlog");
         if (sharedSettings.RootDirectory.GetFolder(".config").GetFile("dotnet-tools.json").Exists)
         {
             context.Logger.LogInformation("Restoring local tools...");
-            await context.DotNet().Tool.Restore(new() { Interactive = context.IsRunningLocally() }, new(), cancellationToken);
+            await context.Tools.DotNet.Tool.RestoreAsync(new() { Interactive = context.Environment.BuildSystem.IsLocal }, new(), cancellationToken);
         }
 
         var result = await context
-                          .DotNet()
-                          .Restore(
+                          .Tools
+                          .DotNet
+                          .RestoreAsync(
                                new DotNetRestoreOptions
                                {
                                    ProjectSolution = solutionSettings.Solution,
-                                   Interactive = context.IsRunningLocally(),
+                                   Interactive = context.Environment.BuildSystem.IsLocal,
                                    IgnoreFailedSources = true,
                                }.BinlogTo(context, binlog),
                                new(),
@@ -35,7 +35,7 @@ public partial class RestoreSolution
         return new(result, binlog);
     }
 
-    public record Result(CommandResult CommandResult, File Binlog);
+    public record Result(CommandResult CommandResult, FilePath Binlog);
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true)]

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
@@ -12,11 +12,8 @@
         <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" />
         <PackageReference Include="ModelingEvolution.JsonParsableConverter" />
         <PackageReference Include="ModularPipelines" />
-        <PackageReference Include="ModularPipelines.Analyzers" />
         <PackageReference Include="ModularPipelines.DotNet" />
         <PackageReference Include="ModularPipelines.Git" />
-        <PackageReference Include="ModularPipelines.GitHub" />
-        <PackageReference Include="ModularPipelines.Node" />
         <PackageReference Include="MSBuild.StructuredLogger" />
         <PackageReference Include="Riok.Mapperly" />
         <PackageReference Include="Rocket.Surgery.Conventions" />
@@ -27,14 +24,10 @@
     <ItemGroup>
         <EmbeddedResource Include="default.runsettings" />
         <Using Include="ModularPipelines" />
-        <Using Include="ModularPipelines.Plugins" />
         <Using Include="ModularPipelines.Attributes" />
-        <Using Include="ModularPipelines.Configuration" />
         <Using Include="ModularPipelines.Context" />
-        <Using Include="ModularPipelines.DotNet.Extensions" />
         <Using Include="ModularPipelines.DotNet.Options" />
         <Using Include="ModularPipelines.DotNet.Services" />
-        <Using Include="ModularPipelines.Models" />
-        <Using Include="ModularPipelines.Modules" />
+        <Using Include="ModularPipelines.FileSystem" />
     </ItemGroup>
 </Project>

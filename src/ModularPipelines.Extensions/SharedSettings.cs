@@ -3,32 +3,33 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileSystemGlobbing;
 using ModularPipelines.FileSystem;
-using ModularPipelines.Git;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 [ServiceRegistration(ServiceLifetime.Singleton)]
-public class SharedSettings(IServiceProvider serviceProvider, IConfiguration configuration)
+public class SharedSettings(IConfiguration configuration)
 {
-    public Folder RootDirectory => field ??= GetConfigurationFolder(nameof(RootDirectory)) ?? serviceProvider.GetRequiredService<IGit>().RootDirectory;
+    // Found on disk rather than through IGitInformation: that runs git, and every command passes through RootDirectoryInterceptor, which
+    // reads this property.
+    public FolderPath RootDirectory => field ??= GetConfigurationFolder(nameof(RootDirectory))
+     ?? new FolderPath(PipelineDirectory.FindGitRoot(Path.Combine(Directory.GetCurrentDirectory(), "_")));
 
-    public Folder TempDirectory => ( field ??= GetConfigurationFolder(nameof(TempDirectory)) ?? RootDirectory / ".temp" ).EnsureExists();
+    public FolderPath TempDirectory => ( field ??= GetConfigurationFolder(nameof(TempDirectory)) ?? RootDirectory / ".temp" ).EnsureExists();
 
     public Uri? PackageIconUrl => field ??= configuration.GetValue<Uri?>(nameof(PackageIconUrl), null);
-    public File PackageIconFile => field ??= TempDirectory.GetFile("packageicon.png");
+    public FilePath PackageIconFile => field ??= TempDirectory.GetFile("packageicon.png");
 
-    public Folder? GetConfigurationFolder(string key)
+    public FolderPath? GetConfigurationFolder(string key)
     {
         return configuration.GetValue<string?>(key) is string path
-            ? Path.IsPathFullyQualified(path) ? new(path) : new Folder(Path.Combine(RootDirectory.Path, path))
+            ? Path.IsPathFullyQualified(path) ? new(path) : new FolderPath(Path.Combine(RootDirectory.Path, path))
             : null;
     }
 
-    public File? GetConfigurationFile(string key)
+    public FilePath? GetConfigurationFile(string key)
     {
         return configuration.GetValue<string?>(key) is string path
-            ? Path.IsPathFullyQualified(path) ? new(path) : new File(Path.Combine(RootDirectory.Path, path))
+            ? Path.IsPathFullyQualified(path) ? new(path) : new FilePath(Path.Combine(RootDirectory.Path, path))
             : null;
     }
 

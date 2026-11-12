@@ -32,7 +32,7 @@ internal static class SolutionProjects
         var serializer = SolutionSerializers.GetSerializerByMoniker(solution.Path)
          ?? throw new InvalidOperationException($"Not a solution file: {solution.Path}");
         var model = await serializer.OpenAsync(solution.Path, cancellationToken);
-        var solutionDirectory = System.IO.Path.GetDirectoryName(solution.Path)!;
+        var solutionDirectory = Path.GetDirectoryName(solution.Path)!;
 
         var projects = new ConcurrentBag<SolutionProject>();
         // Evaluation only reads the project files, so it does not need the throttling the test runs do.
@@ -41,7 +41,7 @@ internal static class SolutionProjects
             new ParallelAsyncOptions { CancelationToken = cancellationToken.ToCancelationToken(), MaxDegreeOfParallelism = -1 },
             async (solutionPath, token) =>
             {
-                var fullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(solutionDirectory, solutionPath.Replace('\\', '/')));
+                var fullPath = Path.GetFullPath(Path.Combine(solutionDirectory, solutionPath.Replace('\\', '/')));
                 var properties = await GetPropertiesAsync(context, fullPath, null, token.ToCancellationToken());
                 // A test framework package usually sets IsTestProject per target framework, so a multi-targeted project only says so
                 // once one is chosen.
@@ -56,10 +56,10 @@ internal static class SolutionProjects
                     new(
                         new(fullPath),
                         solutionPath.Replace('\\', '/'),
-                        System.IO.Path.GetRelativePath(sharedSettings.RootDirectory.Path, fullPath).Replace('\\', '/'),
+                        Path.GetRelativePath(sharedSettings.RootDirectory.Path, fullPath).Replace('\\', '/'),
                         properties.GetValueOrDefault("AssemblyName") is { Length: > 0 } assemblyName
                             ? assemblyName
-                            : System.IO.Path.GetFileNameWithoutExtension(fullPath),
+                            : Path.GetFileNameWithoutExtension(fullPath),
                         IsTrue(properties, "IsTestProject")
                     )
                 );

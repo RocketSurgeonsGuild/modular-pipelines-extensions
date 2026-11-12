@@ -19,14 +19,15 @@ public sealed class CoordinatorCapabilityProvider(IOptions<DistributedOptions> o
     public static bool IsWorker(DistributedOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (options.TotalInstances <= 1) return false;
-
-        return options.Role switch
-        {
-            DistributedRole.Worker => true,
-            DistributedRole.Master => false,
-            _ => options.InstanceIndex != 0,
-        };
+        return  options.TotalInstances <= 1 
+            ?  false 
+            : options.Role switch
+            {
+                DistributedRole.Worker => true,
+                DistributedRole.Master => false,
+                DistributedRole.Auto => throw new NotImplementedException(),
+                _ => options.InstanceIndex != 0,
+            };
     }
 
     /// <inheritdoc />

@@ -209,23 +209,25 @@ public sealed class RocketDistributedOptions
     private static int? ParseInt32(string? value, string name, int minimum)
     {
         if (value is null) return null;
-        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < minimum)
-            throw new InvalidOperationException($"{name} must be an integer greater than or equal to {minimum}, but was '{value}'.");
-        return parsed;
+        return  !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < minimum 
+            ? throw new InvalidOperationException($"{name} must be an integer greater than or equal to {minimum}, but was '{value}'.")
+            :  parsed;
     }
 
     private static bool? ParseBoolean(string? value, string name)
     {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-        return bool.TryParse(value, out var parsed)
+        return  string.IsNullOrWhiteSpace(value) 
+            ?   null  
+            :   bool.TryParse(value, out var parsed)
             ? parsed
             : throw new InvalidOperationException($"{name} must be true or false, but was '{value}'.");
     }
 
     private static DistributedRole ParseRole(string? value)
     {
-        if (value is null) return DistributedRole.Auto;
-        return Enum.TryParse<DistributedRole>(value, ignoreCase: true, out var role) && Enum.IsDefined(role)
+        return  value is null 
+            ?  DistributedRole.Auto 
+            :  Enum.TryParse<DistributedRole>(value, ignoreCase: true, out var role) && Enum.IsDefined(role)
             ? role
             : throw new InvalidOperationException($"{RoleEnvironmentVariable} must be Auto, Master or Worker, but was '{value}'.");
     }

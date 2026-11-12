@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.Options;
 using ModularPipelines.Caching;
 using ModularPipelines.Distributed;
-using ModularPipelines.FileSystem;
 using Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -126,15 +125,14 @@ public partial class GenerateCodeCoverageReports
          );
 
     private ImmutableList<FilePath> FindInputReports() =>
-        testSettings
+        [.. testSettings
            .TestsDirectory
            .GetFiles(
                 x => x.Name.EndsWith(".cobertura.xml", StringComparison.OrdinalIgnoreCase),
                 x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
             )
-           .Concat(testSettings.CoverageReports.SelectMany(pattern => sharedSettings.RootDirectory.GetFiles(pattern)))
-           .DistinctBy(x => x.Path, StringComparer.Ordinal)
-           .ToImmutableList();
+           .Concat(testSettings.CoverageReports.SelectMany( sharedSettings.RootDirectory.GetFiles ))
+           .DistinctBy(x => x.Path, StringComparer.Ordinal)];
 
     /// <summary>
     ///     The result of generating code coverage reports.

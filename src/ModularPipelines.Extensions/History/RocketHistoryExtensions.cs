@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModularPipelines.Caching;
-using ModularPipelines.Extensions;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 
@@ -30,17 +29,17 @@ public static class RocketHistoryExtensions
         }
 
         builder.ConfigureOptions(o => o with
+        {
+            RunReport = o.RunReport with
             {
-                RunReport = o.RunReport with
-                {
-                    HistoryDirectory = options.Resolve(options.HistoryDirectory),
-                    HistoryRetention = options.Retention,
-                    GlobalHistoryRetention = o.RunReport.GlobalHistoryRetention > 0
+                HistoryDirectory = options.Resolve(options.HistoryDirectory),
+                HistoryRetention = options.Retention,
+                GlobalHistoryRetention = o.RunReport.GlobalHistoryRetention > 0
                         ? Math.Max(o.RunReport.GlobalHistoryRetention, options.Retention)
                         : 0,
-                    PipelineIdentity = options.PipelineIdentity ?? o.RunReport.PipelineIdentity,
-                },
-            }
+                PipelineIdentity = options.PipelineIdentity ?? o.RunReport.PipelineIdentity,
+            },
+        }
         );
 
         builder.Services.RemoveAll<RocketHistoryOptions>();

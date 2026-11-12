@@ -2,7 +2,6 @@ using GitignoreParserNet;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileSystemGlobbing;
-using ModularPipelines.FileSystem;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 

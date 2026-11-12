@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Distributed;
@@ -74,7 +73,7 @@ public static class RocketDistributedPipelineBuilderExtensions
             }
         );
 
-        Func<RedisOptions, RedisOptions> redis = r =>
+        RedisOptions redis(RedisOptions r)
         {
             var result = r with
             {
@@ -84,7 +83,7 @@ public static class RocketDistributedPipelineBuilderExtensions
                 MasterStartTimeout = options.MasterStartTimeout,
             };
             return options.ConfigureRedis?.Invoke(result) ?? result;
-        };
+        }
 
         return options.UseRedisArtifactStore
             ? builder.AddRedisDistributed(redis)

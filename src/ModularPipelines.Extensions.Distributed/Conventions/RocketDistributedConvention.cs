@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.ModularPipelines.Extensions.Support;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Distributed.Conventions;

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using ModularPipelines.FileSystem;
 using Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;

@@ -85,15 +85,12 @@ public partial class TestSolution
             await testSettings.TestsDirectory.CopyToAsync(staging, cancellationToken: cancellationToken);
         }
 
-        if (result.Projects.Where(project => project.Error is not null).ToArray() is { Length: > 0 } failed)
-        {
-            throw new InvalidOperationException(
+        return  result.Projects.Where(project => project.Error is not null).ToArray() is { Length: > 0 } failed 
+            ? throw new InvalidOperationException(
                 $"Tests failed in {failed.Length} of {result.Projects.Count} projects:{Environment.NewLine}"
               + string.Join(Environment.NewLine, failed.Select(project => $"  {project.Name}: {project.Error}"))
-            );
-        }
-
-        return result;
+            )
+            : result;
     }
 
     private async Task<Result> RunProjectsAsync(
@@ -195,13 +192,12 @@ public partial class TestSolution
     // One report per test application. --no-artifact-post-processing keeps the .NET 11 SDK from writing merged/; skipping that folder
     // anyway keeps a combined report from being listed alongside the ones it repeats.
     private ImmutableList<FilePath> FindTrxFiles() =>
-        testSettings
+        [.. testSettings
            .TestsDirectory
            .GetFiles(
                 x => x.Name.EndsWith(".trx", StringComparison.OrdinalIgnoreCase),
                 x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
-            )
-           .ToImmutableList();
+            )];
 
     private void LogSelection(IModuleContext context, IReadOnlyList<SolutionProject> projects, IReadOnlyList<SolutionProject> selected)
     {

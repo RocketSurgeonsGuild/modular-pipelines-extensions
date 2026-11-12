@@ -17,7 +17,6 @@ var builder = Pipeline.CreateBuilder(args);
 builder.Configuration.AddInMemoryCollection([new("Docs:Enabled", "false")]);
 builder.AddPlugin(new ConventionsPlugin(
     ConventionContextBuilder.Create(Imports.Instance)
-        .AddIfMissing(nameof(MyAssembly.Project.BuildScriptsRoot), MyAssembly.Project.BuildScriptsRoot),
-        x => x != typeof(TestSolution)
-        ));
+        .AddIfMissing(nameof(MyAssembly.Project.BuildScriptsRoot), MyAssembly.Project.BuildScriptsRoot)
+));
 await builder.RunAsync();

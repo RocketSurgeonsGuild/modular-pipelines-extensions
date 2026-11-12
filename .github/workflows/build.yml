@@ -63,13 +63,13 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: test data
-                  path: artifacts/tests/
+                  path: artifacts/logs/tests/
             - name: 🏺 Publish coverage data
               if: always()
               uses: actions/upload-artifact@v7
               with:
                   name: coverage
-                  path: artifacts/coverage/
+                  path: artifacts/logs/coverage/
             - name: 🏺 Publish NuGet Packages
               if: always()
               uses: actions/upload-artifact@v7

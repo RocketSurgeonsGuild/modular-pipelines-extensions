@@ -14,7 +14,7 @@ using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 var builder = Pipeline.CreateBuilder(args);
 builder.AddPlugin(new ConventionsPlugin(
     ConventionContextBuilder.Create(Imports.Instance)
-        .AddIfMissing(nameof(MyAssembly.Project.BuildScriptsRoot), MyAssembly.Project.BuildScriptsRoot),
+        .AddIfMissing(nameof(AssemblyInfo.Project.BuildScriptsRoot), AssemblyInfo.Project.BuildScriptsRoot),
         x => x != typeof(TestSolution)
         ));
 await builder.RunAsync();

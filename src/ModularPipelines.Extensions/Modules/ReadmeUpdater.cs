@@ -10,7 +10,7 @@ public partial class ReadmeUpdater
 (
 ReadmeSettings readmeSettings,
     ArtifactSettings artifactSettings,
-    SolutionSettings settings) : Module<ReadmeUpdater.Result>
+    SolutionSettings settings) : Module<ReadmeUpdater.Result?>
 {
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {

@@ -3,15 +3,12 @@ using Microsoft.Extensions.Logging;
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<GitVersionModule>]
-public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Module<ShipPublicApisModule.Result>
+public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Module<ShipPublicApisModule.Result?>
 {
-    protected override ModuleConfiguration Configure() => ModuleConfiguration
-                                                         .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(
-                                                             !ShouldShip(),
-                                                             "Not a release build — skipping public API promotion"
-                                                         ))
-                                                         .Build();
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
+        _ => SkipDecision.When(!ShouldShip(),
+            "Not a release build — skipping public API promotion")
+    );
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Readme;
 
@@ -39,6 +38,6 @@ public class ReadmeSettings(SharedSettings sharedSettings)
            //    .Add(new NugetPackagesSection())
            ;
 
-    public File ReadmeFilePath => field ??= sharedSettings.RootDirectory.GetFile("README.md");
+    public FilePath ReadmeFilePath => field ??= sharedSettings.RootDirectory.GetFile("README.md");
 
 }

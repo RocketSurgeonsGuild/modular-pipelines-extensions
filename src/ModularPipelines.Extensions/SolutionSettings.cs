@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
@@ -8,5 +7,5 @@ namespace Rocket.Surgery.ModularPipelines.Extensions;
 public class SolutionSettings(SharedSettings sharedSettings, IConfiguration configuration)
 {
     public string Configuration => field ??= configuration.GetValue("Configuration", "Release");
-    public File Solution => field ??= sharedSettings.GetConfigurationFile(nameof(Solution))!;
+    public FilePath Solution => field ??= sharedSettings.GetConfigurationFile(nameof(Solution))!;
 }

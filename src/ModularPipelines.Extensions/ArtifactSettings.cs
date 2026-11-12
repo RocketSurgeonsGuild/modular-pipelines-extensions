@@ -7,7 +7,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions;
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class ArtifactSettings(SharedSettings sharedSettings, IConfiguration configuration)
 {
-    public Folder ArtifactsDirectory => field ??= ( configuration.GetValue<Folder?>("ArtifactsDirectory") ?? sharedSettings.RootDirectory / "artifacts" ).EnsureExists();
+    public FolderPath ArtifactsDirectory => field ??= ( configuration.GetValue<FolderPath?>("ArtifactsDirectory") ?? sharedSettings.RootDirectory / "artifacts" ).EnsureExists();
 
-    public Folder LogsDirectory => field ??= ( configuration.GetValue<Folder?>("LogsDirectory") ?? ArtifactsDirectory / "logs" ).EnsureExists();
+    public FolderPath LogsDirectory => field ??= ( configuration.GetValue<FolderPath?>("LogsDirectory") ?? ArtifactsDirectory / "logs" ).EnsureExists();
 }

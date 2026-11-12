@@ -2,15 +2,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : Module<DownloadPackageIconModule.Result>
+public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : Module<DownloadPackageIconModule.Result?>
 {
-    protected override ModuleConfiguration Configure() => ModuleConfiguration
-                                                         .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(
-                                                             sharedSettings.PackageIconFile.Exists,
-                                                             "Package icon already staged"
-                                                         ))
-                                                         .Build();
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
+        _ => SkipDecision.When(sharedSettings.PackageIconFile.Exists,
+            "Package icon already staged")
+    );
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {

@@ -1,7 +1,5 @@
 using System.Reflection;
 using Indago.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
-using ServiceCollectionExtensions = ModularPipelines.Extensions.ServiceCollectionExtensions;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
@@ -11,12 +9,15 @@ public class ConventionsPlugin(ConventionContextBuilder contextBuilder, ModuleDe
 {
     public string Name => "Conventions";
 
-    public void ConfigurePipeline(PipelineBuilder pipelineBuilder) => pipelineBuilder.Configure(contextBuilder, CancellationToken.None).Wait();
-
-    public void ConfigureServices(IServiceCollection services)
+    [RequiresUnreferencedCode("Registers the modules found by the scan by their runtime type.")]
+    [RequiresDynamicCode("Registers the modules found by the scan by their runtime type.")]
+    public void Configure(PipelineBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Configure(contextBuilder, CancellationToken.None).Wait();
+
         var ctp = Assembly.GetEntryAssembly().GetIndagoProvider();
-        services.AddIndagoServiceRegistrations(ctp);
+        builder.Services.AddIndagoServiceRegistrations(ctp);
         // not sure if this is going to come back to haunt me or not
         var modules = ctp.GetTypes(f => f
                                        .FromAssemblies()
@@ -26,17 +27,7 @@ public class ConventionsPlugin(ConventionContextBuilder contextBuilder, ModuleDe
                                                      .KindOf(TypeKindFilter.Class)
                                         )
         );
-        var method = typeof(ServiceCollectionExtensions)
-                    .GetMethods()
-                    .Single(z => z.Name == nameof(ServiceCollectionExtensions.AddModule) && z.ContainsGenericParameters && z.GetParameters().Length == 1);
 
-        foreach (var m in modules)
-        {
-            if (moduleDelegate?.Invoke(m) == false)
-            {
-                continue;
-            }
-            method.MakeGenericMethod(m)!.Invoke(null, [services]);
-        }
+        builder.AddModules([.. modules.Where(m => moduleDelegate?.Invoke(m) != false)]);
     }
 }

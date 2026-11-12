@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.SolutionPersistence.Serializer;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -16,10 +15,10 @@ public partial class TestSolution
     TestSettings testSettings,
     SolutionSettings settings = null!) : Module<TestSolution.Result?>
 {
-    protected override ModuleConfiguration Configure() => ModuleConfiguration
-                                                         .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(settings is null || !testSettings.IsEnabled, "Tests are disabled or no solution was provided"))
-                                                         .Build();
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
+        _ => SkipDecision.When(settings is null || !testSettings.IsEnabled,
+            "Tests are disabled or no solution was provided")
+    );
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
@@ -39,8 +38,9 @@ public partial class TestSolution
         var solution = await SolutionToTest(context, cancellationToken);
         var binlog = artifactSettings.LogsDirectory.GetFile("tests.binlog");
         var result = await context
-                          .DotNet()
-                          .Test(
+                          .Tools
+                          .DotNet
+                          .TestAsync(
                                new()
                                {
                                    Solution = solution,
@@ -86,7 +86,7 @@ public partial class TestSolution
     ///     The solution, or, when <see cref="TestSettings.ExcludeTests" /> names projects, a solution filter of it without them, written to the
     ///     tests directory. Only the test run uses the filter: the solution still builds and packs every project.
     /// </summary>
-    private async Task<File> SolutionToTest(IModuleContext context, CancellationToken cancellationToken)
+    private async Task<FilePath> SolutionToTest(IModuleContext context, CancellationToken cancellationToken)
     {
         if (testSettings.ExcludeTests.Count == 0) return settings.Solution;
 
@@ -157,5 +157,5 @@ public partial class TestSolution
     /// <param name="CommandResult">The result of the <c>dotnet test</c> command.</param>
     /// <param name="TrxFiles">The TRX report of each test module (one per test project and target framework).</param>
     /// <param name="Binlog">The binary log location.</param>
-    public record Result(CommandResult CommandResult, ImmutableList<File> TrxFiles, File Binlog);
+    public record Result(CommandResult CommandResult, ImmutableList<FilePath> TrxFiles, FilePath Binlog);
 }

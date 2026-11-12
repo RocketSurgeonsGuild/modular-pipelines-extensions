@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -29,7 +30,6 @@ public partial class TestSolution
         testSettings.TestsDirectory.Clean();
 
         var binlog = artifactSettings.LogsDirectory.GetFile("tests.binlog");
-        var trx = testSettings.TestsDirectory.GetFile("tests.trx");
         var result = await context
                           .DotNet()
                           .Test(
@@ -47,8 +47,10 @@ public partial class TestSolution
                                        "--coverage-settings", testSettings.RunSettings,
                                        //  "--coverage-output", testSettings.CoverageDirectory.GetFile("coverage.cobertura"),
                                        "--coverage-output-format", "cobertura",
+                                       // No --report-trx-filename: one fixed name is shared by every test module, so with
+                                       // several projects or target frameworks each report overwrote the one before. The
+                                       // default name is unique per module ({asm}_{tfm}_{arch}.trx since MTP 2.3).
                                        "--report-trx",
-                                       "--report-trx-filename", trx.Name,
                                    ],
                                    // TODO: Add verbosity, and loggers.
                                    // Arguments
@@ -57,8 +59,24 @@ public partial class TestSolution
                                cancellationToken
                            );
 
-        return new(result, trx, binlog);
+        // One report per module. With the .NET 11 SDK, dotnet test also writes a combined report of all modules under
+        // merged/; it's left out here so the same results aren't listed twice.
+        var trxFiles = testSettings
+                      .TestsDirectory
+                      .GetFiles(
+                           x => x.Name.EndsWith(".trx", StringComparison.OrdinalIgnoreCase),
+                           x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
+                       )
+                      .ToImmutableList();
+
+        return new(result, trxFiles, binlog);
     }
 
-    public record Result(CommandResult CommandResult, File Trx, File Binlog);
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="CommandResult">The result of the <c>dotnet test</c> command.</param>
+    /// <param name="TrxFiles">The TRX report of each test module (one per test project and target framework).</param>
+    /// <param name="Binlog">The binary log location.</param>
+    public record Result(CommandResult CommandResult, ImmutableList<File> TrxFiles, File Binlog);
 }

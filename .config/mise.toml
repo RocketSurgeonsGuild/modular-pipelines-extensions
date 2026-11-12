@@ -1,8 +1,5 @@
 [tools]
-dotnet = [
-  { version = "11.0.100" },
-  { version = "10.0.15", runtime = "dotnet" },
-]
+dotnet = [{ version = "11.0.100" }, { version = "10.0.15", runtime = "dotnet" }]
 "github:microsoft/apm" = { version = "v0.35.1", bin = "apm" }
 "github:eljulians/skillfile" = { version = "v1.9.2", bin = "skillfile" }
 "github:yvgude/lean-ctx" = { version = "v3.11.4", bin = "lean-ctx" }

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net11.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <Description>Runs a Rocket Surgery ModularPipelines build across several CI runners with the ModularPipelines Redis coordinator, and falls back to a normal standalone run when no Redis connection is configured.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ModularPipelines" />
+        <PackageReference Include="ModularPipelines.Distributed.Redis" />
+        <PackageReference Include="Rocket.Surgery.Conventions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="ModularPipelines" />
+        <Using Include="ModularPipelines.Distributed" />
+        <Using Include="ModularPipelines.Distributed.Redis" />
+    </ItemGroup>
+</Project>

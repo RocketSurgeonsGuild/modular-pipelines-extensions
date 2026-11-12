@@ -6,4 +6,7 @@
   <Folder Name="/src/ModularPipelines.Extensions/">
     <Project Path="src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
   </Folder>
+  <Folder Name="/src/ModularPipelines.Extensions.Distributed/">
+    <Project Path="src/ModularPipelines.Extensions.Distributed/Rocket.Surgery.ModularPipelines.Extensions.Distributed.csproj" />
+  </Folder>
 </Solution>

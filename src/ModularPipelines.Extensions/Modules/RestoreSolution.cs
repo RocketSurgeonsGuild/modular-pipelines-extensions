@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class RestoreSolution
 (
     SharedSettings sharedSettings,

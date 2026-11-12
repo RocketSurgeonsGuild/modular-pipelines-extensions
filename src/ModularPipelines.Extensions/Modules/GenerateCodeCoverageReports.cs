@@ -8,6 +8,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///     Generates code coverage artifacts from cobertura files emitted by test execution.
 /// </summary>
 [DependsOn<TestSolution>]
+[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class GenerateCodeCoverageReports
 (TestSettings testSettings) : Module<GenerateCodeCoverageReports.Result>
 {

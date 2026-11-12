@@ -7,6 +7,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 // The API reference is generated from the build's output, so the docs only build after the solution built successfully.
 [DependsOn<BuildSolution>]
+[RequiresCapability(RocketCapabilities.Coordinator)]
 public class DocsModule(DocsModule.Settings settings, ArtifactSettings artifactSettings) : Module<DocsModule.Result?>
 {
 

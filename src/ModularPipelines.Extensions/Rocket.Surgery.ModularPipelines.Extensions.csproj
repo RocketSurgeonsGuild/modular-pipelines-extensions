@@ -42,9 +42,10 @@
         <PackageReference Include="ProtoPromise" />
         <PackageReference Include="MSBuild.StructuredLogger" />
         <PackageReference Include="Riok.Mapperly" />
-        <PackageReference Include="Rocket.Surgery.Conventions" />
-        <PackageReference Include="Rocket.Surgery.Conventions.Configuration.Yaml" />
-        <PackageReference Include="Indago" />
+        <PackageReference Include="Joinery.Dovetail.ModularPipelines" />
+        <PackageReference Include="Joinery.Dovetail.Configuration.Json" />
+        <PackageReference Include="Joinery.Dovetail.Configuration.Yaml" />
+        <PackageReference Include="Specular" />
     </ItemGroup>
 
     <ItemGroup>

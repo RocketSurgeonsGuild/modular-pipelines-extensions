@@ -58,7 +58,7 @@ public static class TestShards
     /// <summary>
     ///     Adds the generated test shards and the <see cref="TestShardPlan" /> that splits the test projects between them, and turns
     ///     <see cref="TestSolution" /> off. Without generated shards (<c>RocketTestShards</c> unset or one) it only records that there are
-    ///     none. The <c>TestShardsConvention</c> calls it for a build host that imports conventions.
+    ///     none. The <c>TestShardsJoint</c> calls it for a build host that applies Dovetail's joints.
     /// </summary>
     /// <param name="builder">The pipeline builder.</param>
     /// <returns>The same builder.</returns>

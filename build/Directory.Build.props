@@ -1,6 +1,11 @@
 <Project>
     <PropertyGroup>
         <BuildScriptsRoot>$(MSBuildThisFileDirectory)</BuildScriptsRoot>
+        <!--
+            Dovetail would generate a joint that requires appsettings.yaml in the output folder under the project's name (Build.cs.yaml),
+            which a file-based app does not copy there. The library's BuildScriptsRootJoint reads build/appsettings*.yaml in place instead.
+        -->
+        <DovetailEnableYamlConfiguration>false</DovetailEnableYamlConfiguration>
     </PropertyGroup>
     <!-- The package brings the test shard generator and its props; the #:project reference to the library does not, so add them here. -->
     <Import Project="../src/ModularPipelines.Extensions/build/Rocket.Surgery.ModularPipelines.Extensions.props" />

@@ -26,8 +26,8 @@ public static class RocketDistributedPipelineBuilderExtensions
         if (builder.Services.Any(static d => d.ServiceType == typeof(RocketDistributedRegistration)))
         {
             throw new InvalidOperationException(
-                "AddRocketDistributed was already applied to this pipeline, possibly by the convention the conventions plugin runs. "
-              + "Call it before adding the conventions plugin, so the convention sees it and steps aside."
+                "AddRocketDistributed was already applied to this pipeline, possibly by the joint of this package that ConfigureDovetail applies. "
+              + "Call it before ConfigureDovetail, so the joint sees it and steps aside."
             );
         }
 
@@ -40,7 +40,7 @@ public static class RocketDistributedPipelineBuilderExtensions
     [RequiresDynamicCode("Distributed type-erased result serialization is unsupported in Native AOT.")]
     internal static PipelineBuilder AddRocketDistributed(this PipelineBuilder builder, RocketDistributedOptions options)
     {
-        // Recorded even for a standalone run, so an explicit call and the convention never both apply.
+        // Recorded even for a standalone run, so an explicit call and the joint never both apply.
         builder.Services.TryAddSingleton(new RocketDistributedRegistration(options.IsDistributed));
         if (!options.IsDistributed) return builder;
 

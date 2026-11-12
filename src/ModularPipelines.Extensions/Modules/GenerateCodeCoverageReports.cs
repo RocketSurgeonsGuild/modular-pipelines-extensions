@@ -1,21 +1,36 @@
 using System.Collections.Immutable;
+using Microsoft.Extensions.Options;
+using ModularPipelines.Caching;
+using ModularPipelines.Distributed;
 using ModularPipelines.FileSystem;
 using Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>
-///     Generates code coverage artifacts from cobertura files emitted by test execution.
+///     Generates code coverage artifacts from cobertura files emitted by test execution, and from
+///     <see cref="TestSettings.CoverageReports" />.
 /// </summary>
+/// <remarks>
+///     When a distributed worker ran <see cref="TestSolution" />, its results arrive as the <see cref="TestSolution.ResultsArtifact" />
+///     artifact and are copied into <see cref="TestSettings.TestsDirectory" /> first, so the coordinator also has every TRX file to
+///     publish. Outside a worker that artifact is an empty folder.
+/// </remarks>
 [DependsOn<TestSolution>]
+[ConsumesArtifact(typeof(TestSolution), TestSolution.ResultsArtifact, RestorePath = TestSolution.ResultsArtifactPath)]
 [RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class GenerateCodeCoverageReports
-(TestSettings testSettings) : Module<GenerateCodeCoverageReports.Result>
+(
+    SharedSettings sharedSettings,
+    TestSettings testSettings,
+    IOptions<DistributedOptions> distributedOptions,
+    IOptions<ModuleCacheOptions> moduleCacheOptions) : Module<GenerateCodeCoverageReports.Result>
 {
     private const string ReportGeneratorCommandName = "reportgenerator";
 
+    // In a distributed run the reports may still be on their way from a worker, so only the run can tell.
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
-        _ => SkipDecision.When(!HasInputReports(),
+        _ => SkipDecision.When(distributedOptions.Value.TotalInstances <= 1 && FindInputReports().Count == 0,
             "No cobertura coverage reports were found")
     );
 
@@ -33,10 +48,17 @@ public partial class GenerateCodeCoverageReports
         var coverageBadgeDirectory = coverageDirectory.GetFolder("badges");
         var coverageSummaryDirectory = coverageDirectory.GetFolder("summary");
 
-        var inputReports = testSettings
-                          .TestsDirectory
-                          .GetFiles(x => x.Name.EndsWith(".cobertura.xml", StringComparison.OrdinalIgnoreCase))
-                          .ToImmutableList();
+        var fromWorker = TestSolution.GetResultsArtifactFolder(moduleCacheOptions.Value);
+        if (fromWorker.Exists && fromWorker.GetFiles(_ => true).Any())
+        {
+            await fromWorker.CopyToAsync(testSettings.TestsDirectory, cancellationToken: cancellationToken);
+        }
+
+        var inputReports = FindInputReports();
+        if (inputReports.Count == 0)
+        {
+            return new(coverageDirectory, coverageReportDirectory, coverageSummaryDirectory, inputReports);
+        }
 
         var reportsArgument = string.Join(';', inputReports.Select(x => x.Path));
 
@@ -103,11 +125,16 @@ public partial class GenerateCodeCoverageReports
              cancellationToken
          );
 
-    private bool HasInputReports() =>
+    private ImmutableList<FilePath> FindInputReports() =>
         testSettings
            .TestsDirectory
-           .GetFiles(x => x.Name.EndsWith(".cobertura.xml", StringComparison.OrdinalIgnoreCase))
-           .Any();
+           .GetFiles(
+                x => x.Name.EndsWith(".cobertura.xml", StringComparison.OrdinalIgnoreCase),
+                x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
+            )
+           .Concat(testSettings.CoverageReports.SelectMany(pattern => sharedSettings.RootDirectory.GetFiles(pattern)))
+           .DistinctBy(x => x.Path, StringComparer.Ordinal)
+           .ToImmutableList();
 
     /// <summary>
     ///     The result of generating code coverage reports.

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Proto.Promises;
 using Rocket.Surgery.ModularPipelines.Extensions.Support;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
@@ -13,5 +14,8 @@ internal class ModulePipelinesConvention : IPipelineBuilderConvention
         builder.Services.AddSingleton<ICommandInterceptor>(provider => new RootDirectoryInterceptor(provider.GetRequiredService<SharedSettings>(), workingDirectory));
         // Without it a standalone run would skip every module that requires the coordinator.
         builder.AddCapabilityProvider<CoordinatorCapabilityProvider>();
+        // Every promise the modules create is awaited, so this only reports a forgotten one. Left unset, ProtoPromise rethrows it on
+        // the thread pool, which ends the process.
+        Promise.Config.UncaughtRejectionHandler ??= static exception => Console.Error.WriteLine($"Unobserved promise rejection: {exception}");
     }
 }

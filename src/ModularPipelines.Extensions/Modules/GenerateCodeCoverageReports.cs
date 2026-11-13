@@ -40,28 +40,30 @@ public partial class GenerateCodeCoverageReports
 
         var reportsArgument = string.Join(';', inputReports.Select(x => x.Path));
 
-        await RunReportGeneratorAsync(
-            context,
-            reportsArgument,
-            coverageDirectory.Path,
-            "Cobertura;lcov",
-            cancellationToken
-        );
-
-        await RunReportGeneratorAsync(
-            context,
-            reportsArgument,
-            coverageReportDirectory.Path,
-            "Html_Dark",
-            cancellationToken
-        );
-
-        await RunReportGeneratorAsync(
-            context,
-            reportsArgument,
-            coverageSummaryDirectory.Path,
-            "Badges;HtmlSummary;TextSummary;MarkdownSummary;MarkdownSummaryGithub",
-            cancellationToken
+        // Each run parses every input report, which is most of its time, and they write to separate folders, so they run
+        // side by side; this module is the last step of the pipeline.
+        await Task.WhenAll(
+            RunReportGeneratorAsync(
+                context,
+                reportsArgument,
+                coverageDirectory.Path,
+                "Cobertura;lcov",
+                cancellationToken
+            ),
+            RunReportGeneratorAsync(
+                context,
+                reportsArgument,
+                coverageReportDirectory.Path,
+                "Html_Dark",
+                cancellationToken
+            ),
+            RunReportGeneratorAsync(
+                context,
+                reportsArgument,
+                coverageSummaryDirectory.Path,
+                "Badges;HtmlSummary;TextSummary;MarkdownSummary;MarkdownSummaryGithub",
+                cancellationToken
+            )
         );
 
         var coberturaFile = coverageDirectory.GetFile("Cobertura.xml");

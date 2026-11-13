@@ -18,7 +18,11 @@ public partial class TestSolution
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        if (!testSettings.RunSettings.Exists)
+        // Cleaned first: the default settings are written into this folder. They are written on every run (not only when
+        // missing) so a newer library's defaults replace an older copy.
+        testSettings.TestsDirectory.Clean();
+
+        if (testSettings.UsesDefaultRunSettings || !testSettings.RunSettings.Exists)
         {
             await using var tempFile = testSettings.RunSettings.GetStream(FileAccess.Write);
             await typeof(TestSolution)
@@ -26,8 +30,6 @@ public partial class TestSolution
                  // ReSharper disable once NullableWarningSuppressionIsUsed
                  .GetManifestResourceStream("Rocket.Surgery.ModularPipelines.Extensions.default.runsettings")!.CopyToAsync(tempFile, cancellationToken);
         }
-
-        testSettings.TestsDirectory.Clean();
 
         var binlog = artifactSettings.LogsDirectory.GetFile("tests.binlog");
         var result = await context

@@ -43,7 +43,7 @@
         <PackageVersion Include="Joinery.Dovetail.Configuration.Yaml" Version="0.5.3" />
         <PackageVersion Include="Joinery.Dovetail.ModularPipelines" Version="0.5.3" />
         <PackageVersion Include="Specular" Version="0.4.1" />
-        <PackageVersion Include="TUnit" Version="1.83.8" />
+        <PackageVersion Include="TUnit" Version="1.84.0" />
     </ItemGroup>
     <Import Project="$(MSBuildThisFileDirectory)/Directory.Packages.support.props" Condition="Exists('$(MSBuildThisFileDirectory)/Directory.Packages.support.props')" />
 </Project>

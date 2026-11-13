@@ -2,7 +2,7 @@
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<DownloadPackageIconModule>(Optional = true)]
-[DependsOn<RestoreSolution>]
+[DependsOn<RestoreSolutionModule>]
 [DependsOn<GitVersionModule>]
 public partial class BuildSolution
 (

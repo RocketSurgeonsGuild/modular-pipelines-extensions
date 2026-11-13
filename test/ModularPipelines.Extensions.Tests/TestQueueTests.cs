@@ -157,8 +157,8 @@ public class TestQueueTests
     private static string Describe(IEnumerable<TestQueueEntry> queue) =>
         string.Join(", ", queue.Select(entry => $"{entry.Name}={( entry.Estimate is { } estimate ? estimate.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture) : "?" )}"));
 
-    private static SolutionProject Project(string name) =>
-        new(new($"/repo/test/{name}/{name}.csproj"), $"test/{name}/{name}.csproj", $"test/{name}/{name}.csproj", name, true);
+    private static SolutionProjectsModule.Project Project(string name) =>
+        new(new($"/repo/test/{name}/{name}.csproj"), name, true);
 
     private static Dictionary<string, TimeSpan> Estimates(params (string Name, int Seconds)[] estimates) =>
         estimates.ToDictionary(z => z.Name, z => TimeSpan.FromSeconds(z.Seconds));

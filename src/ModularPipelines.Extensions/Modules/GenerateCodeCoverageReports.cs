@@ -6,7 +6,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 /// <summary>
 ///     Generates code coverage artifacts from cobertura files emitted by test execution.
 /// </summary>
-[DependsOn<TestSolution>]
+[DependsOn<TestSolutionModule>]
 public partial class GenerateCodeCoverageReports
 (TestSettings testSettings) : Module<GenerateCodeCoverageReports.Result>
 {
@@ -32,7 +32,7 @@ public partial class GenerateCodeCoverageReports
         var coverageSummaryDirectory = coverageDirectory.GetFolder("summary");
 
         var inputReports = testSettings
-                          .TestsDirectory
+                          .TestArtifactsDirectory
                           .GetFiles(x => x.Name.EndsWith(".cobertura.xml", StringComparison.OrdinalIgnoreCase))
                           .ToImmutableList();
 
@@ -103,7 +103,7 @@ public partial class GenerateCodeCoverageReports
 
     private bool HasInputReports() =>
         testSettings
-           .TestsDirectory
+           .TestArtifactsDirectory
            .GetFiles(x => x.Name.EndsWith(".cobertura.xml", StringComparison.OrdinalIgnoreCase))
            .Any();
 

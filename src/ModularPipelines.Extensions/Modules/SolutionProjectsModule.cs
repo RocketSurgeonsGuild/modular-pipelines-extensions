@@ -64,7 +64,7 @@ public class SolutionProjectsModule(SolutionSettings settings = null!) : Module<
             }
         );
 
-        return [.. projects.OrderBy(project => project.ProjectPath)];
+        return [.. projects.OrderBy(project => project.ProjectPath.Path, StringComparer.Ordinal)];
     }
 
     private static bool IsTrue(Dictionary<string, string> properties, string name) =>

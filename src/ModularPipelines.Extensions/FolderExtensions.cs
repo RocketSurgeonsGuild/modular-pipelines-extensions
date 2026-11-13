@@ -1,5 +1,3 @@
-using ModularPipelines.FileSystem;
-
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 public static class FolderExtensions

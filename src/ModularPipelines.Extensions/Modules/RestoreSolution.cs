@@ -44,5 +44,5 @@ internal partial class ToolsManifestContext : JsonSerializerContext { }
 
 internal class ToolsManifest
 {
-    public Dictionary<string, JsonElement> Tools { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, JsonElement> Tools { get; set; } = [with(StringComparer.OrdinalIgnoreCase)];
 }

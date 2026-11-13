@@ -49,7 +49,7 @@ ReadmeSettings readmeSettings,
             var newSectionContent = await section.Process(config, readmeSettings.References, context);
             ranges.Add(
                 (sectionStart.Index + sectionStart.Length,
-                  sectionEnd.Index - (sectionStart.Index + sectionStart.Length), newSectionContent)
+                  sectionEnd.Index - ( sectionStart.Index + sectionStart.Length ), newSectionContent)
             );
         }
 

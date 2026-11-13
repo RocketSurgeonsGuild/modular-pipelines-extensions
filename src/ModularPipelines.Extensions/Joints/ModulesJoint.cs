@@ -11,13 +11,12 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Joints;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         A <see cref="ModuleDelegate" /> in the context (<c>ConfigureDovetail(z =&gt; z.Set&lt;ModuleDelegate&gt;(...))</c>) decides
-///         which of them are added; leave this joint out (<c>ExceptJoint(typeof(ModulesJoint))</c>) to add every module yourself.
+///         A module marked <see cref="ExcludeModuleAttribute" /> is left out. A <see cref="ModuleDelegate" /> in the context
+///         (<c>ConfigureDovetail(z =&gt; z.Set&lt;ModuleDelegate&gt;(...))</c>) decides which of the others are added; leave this joint
+///         out (<c>ExceptJoint(typeof(ModulesJoint))</c>) to add every module yourself.
 ///     </para>
 /// </remarks>
 [DovetailExport]
-[RequiresUnreferencedCode("Adds the modules Specular found by their type, which ModularPipelines constructs through reflection.")]
-[RequiresDynamicCode("Adds the modules Specular found by their type, which ModularPipelines constructs through reflection.")]
 public sealed class ModulesJoint : IPipelineBuilderJoint
 {
     /// <inheritdoc />
@@ -35,6 +34,7 @@ public sealed class ModulesJoint : IPipelineBuilderJoint
                                                  .AssignableTo<IModule>()
                                                  .NotInfoOf(TypeInfoFilter.Static, TypeInfoFilter.Abstract)
                                                  .KindOf(TypeKindFilter.Class)
+                                                 .WithoutAttribute<ExcludeModuleAttribute>()
                                     )
                       );
         builder.AddModules([.. modules.Where(module => filter?.Invoke(module) != false)]);

@@ -32,17 +32,14 @@ file-based build host references both next to the library and applies the joints
 using Build;
 using Joinery.Dovetail;
 using ModularPipelines;
-using Rocket.Surgery.ModularPipelines.Extensions.Joints;
 
-await using var pipeline = await Pipeline
-                                .CreateBuilder(args)
-                                .ConfigureDovetail(z => z.Set(BuildScriptsRootJoint.BuildScriptsRootKey, AssemblyInfo.Project.BuildScriptsRoot));
+await using var pipeline = await Pipeline.CreateBuilder(args).ConfigureDovetail();
 await pipeline.RunAsync();
 ```
 
 `Joinery.Dovetail.ModularPipelines` and `Specular` have to be direct references: their generators write `ConfigureDovetail` and the
 scan results into the build host, and they do not flow through the library. `ConfigureDovetail` is generated into the build host's
-root namespace (`Build` for `Build.cs`). `ConfigureDovetail()` without arguments works as well; see the settings files below.
+root namespace (`Build` for `Build.cs`).
 
 The library's joints:
 
@@ -50,19 +47,17 @@ The library's joints:
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `ModulesJoint`              | Adds every module class of the build host and its references, as Specular found them.                                     |
 | `ServiceRegistrationsJoint` | Registers the classes marked `[ServiceRegistration]` (the settings classes) through Specular.                             |
-| `BuildScriptsRootJoint`     | Points Dovetail's JSON and YAML configuration at the scripts folder, so its settings files are read in place.             |
 | `RunHistoryJoint`           | Keeps run history under the repository and estimates module durations from it (see below).                                |
 
-**Settings files.** `BuildScriptsRootJoint` runs before the other configuration joints and points Dovetail's configuration at the
-folder in the `BuildScriptsRoot` context value (above, the `BuildScriptsRoot` MSBuild property set in `build/Directory.Build.props` and
-exposed through `ProjectProperty`), or else the folder of a file-based build host's `.cs` file. Dovetail's JSON and YAML joints then read
-`appsettings.*`, `appsettings.{Environment}.*` and `appsettings.local.*` there, in place, so a change applies without a rebuild. Each
-format is layered on its own, so a `.local` file overrides the files of its own format; environment variables and the command line win
-over all of them.
+**Settings files.** Dovetail reads a file-based build host's settings files from the folder of its `.cs` file (`build/` for
+`build/Build.cs`), in place, so a change applies without a rebuild: `appsettings.*`, `appsettings.{Environment}.*` and
+`appsettings.local.*`, in JSON and YAML. Each format is layered on its own, so a `.local` file overrides the files of its own format;
+environment variables and the command line win over all of them.
 
-**Leaving modules out.** Put a `ModuleDelegate` in the context, `ConfigureDovetail(z => z.Set<ModuleDelegate>(type => type !=
-typeof(DocsModule)))`, or leave the `ModulesJoint` out with `z.ExceptJoint(typeof(ModulesJoint))` and add the modules yourself.
-ModularPipelines' own `--skip-module` still works at run time.
+**Leaving modules out.** Mark a module `[ExcludeModule]` to keep it out of the scan; it still runs when something adds it, such as
+`builder.AddModule<T>()` or another module's dependency. To leave out modules you do not own, put a `ModuleDelegate` in the context,
+`ConfigureDovetail(z => z.Set<ModuleDelegate>(type => type != typeof(DocsModule)))`, or leave the `ModulesJoint` out with
+`z.ExceptJoint(typeof(ModulesJoint))` and add the modules yourself. ModularPipelines' own `--skip-module` still works at run time.
 
 A host that builds the pipeline itself can apply the same joints with
 `builder.AddPlugin(new DovetailPipelinePlugin(DovetailContextBuilder.Create()))`.
@@ -128,9 +123,12 @@ default branch keeps one history, which every pull request restores:
 Each project writes its TRX report and cobertura coverage into its own folder (`artifacts/logs/tests/<assembly>`). A failing project
 does not stop the others; the module fails at the end and lists every project that failed.
 
-The projects start in the order that should finish soonest: each free slot takes the next project, and they come longest first by the
-median of their last runs (kept in `.modularpipelines/estimates`, failed runs included). Projects with no previous run go first, since
-one of them may be the longest. The log shows the order, each project's estimate and the run's estimated duration.
+The projects are queued longest first by the median of their last runs (kept in `.modularpipelines/estimates`, failed runs
+included), and each slot takes its next project when it is free, so a wrong estimate only shifts work between the slots. With more
+than one slot, the first can be a fast lane that takes the shortest project left, so the quick projects report early and run alongside
+the long ones while the other slots take the longest. The estimates decide: the fast lane is used when the run finishes no later with it
+than without, since it can leave a medium project to start late. Projects with no previous run go first, since one of them may be the
+longest. The log shows the order, whether there is a fast lane, each project's estimate and the run's estimated duration.
 
 ```yaml
 EnableTests: true

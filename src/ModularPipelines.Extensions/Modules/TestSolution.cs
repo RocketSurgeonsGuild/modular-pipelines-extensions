@@ -11,7 +11,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>
 ///     Runs the solution's tests with coverage: by default one <c>dotnet test</c> per test project, each a sub module, several at once,
-///     longest first by their history (see <see cref="TestQueue" />); or one <c>dotnet test</c> over the solution, as
+///     ordered by their history (see <see cref="TestQueue" />); or one <c>dotnet test</c> over the solution, as
 ///     <see cref="TestSettings.Mode" /> says.
 /// </summary>
 [DependsOn<RestoreSolution>]
@@ -52,7 +52,7 @@ public partial class TestSolution
         return ThrowIfAnyFailed(result);
     }
 
-    [SuppressMessage("ModularPipelines", "MP0016", Justification = "Each call passes a token: the slot's from Parallel.ForEachAsync, which ends with the module's. MP0016 only recognizes ExecuteAsync's own.")]
+    [SuppressMessage("ModularPipelines", "MP0016", Justification = "Each call passes the module's token on. MP0016 only recognizes ExecuteAsync's own.")]
     private async Task<Result> RunProjectsAsync(IModuleContext context, FilePath binlog, CancellationToken cancellationToken)
     {
         var projects = await SolutionProjects.EvaluateAsync(context, sharedSettings, settings.Solution, cancellationToken);
@@ -68,21 +68,40 @@ public partial class TestSolution
             projects.Where(project => project.IsTestProject).Except(excluded),
             await GetEstimatesAsync(context, moduleId, cancellationToken)
         );
+        var fastLane = TestQueue.UsesFastLane(queue, testSettings.Parallelism);
         if (context.Logger.IsEnabled(LogLevel.Information))
         {
-            context.Logger.LogInformation("Running {Queue}", TestQueue.Describe(queue, testSettings.Parallelism));
+            context.Logger.LogInformation("Running {Queue}", TestQueue.Describe(queue, testSettings.Parallelism, fastLane));
         }
 
         var outcomes = new ConcurrentBag<ProjectResult>();
-        // Parallel.ForEachAsync takes the next item of the queue whenever one of its slots is free, so the queue's order is the order
-        // the projects start in.
-        await Parallel.ForEachAsync(
-            queue,
-            new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = testSettings.Parallelism },
-            async (entry, slotToken) => outcomes.Add(await RunProjectAsync(context, moduleId, entry, slotToken))
+        var lanes = new TestLanes(queue);
+        // Each slot takes its next project when it is free: the fast lane, when there is one, the shortest left, the others the longest.
+        await Task.WhenAll(
+            Enumerable
+               .Range(0, Math.Min(testSettings.Parallelism, queue.Length))
+               .Select(slot => RunSlotAsync(context, moduleId, lanes, fastLane && slot == 0, outcomes, cancellationToken))
         );
 
         return new(null, FindTrxFiles(testSettings.TestsDirectory), binlog, [.. outcomes.OrderBy(outcome => outcome.Name, StringComparer.Ordinal)]);
+    }
+
+    private async Task RunSlotAsync(
+        IModuleContext context,
+        ModuleId moduleId,
+        TestLanes lanes,
+        bool fastLane,
+        ConcurrentBag<ProjectResult> outcomes,
+        CancellationToken cancellationToken
+    )
+    {
+        // Off the caller's thread, so the slots start together.
+        await Task.Yield();
+        while (lanes.TryTake(fastLane, out var entry))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            outcomes.Add(await RunProjectAsync(context, moduleId, entry, cancellationToken));
+        }
     }
 
     [SuppressMessage("ModularPipelines", "MP0016", Justification = "Each call passes a token: the slot's from Parallel.ForEachAsync, which ends with the module's. MP0016 only recognizes ExecuteAsync's own.")]

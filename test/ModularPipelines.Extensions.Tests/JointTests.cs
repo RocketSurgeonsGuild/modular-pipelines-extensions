@@ -1,6 +1,5 @@
 using Joinery.Dovetail;
 using Joinery.Dovetail.Joints;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rocket.Surgery.ModularPipelines.Extensions.Joints;
 using Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -82,27 +81,32 @@ public class JointTests
     }
 
     [Test]
-    public async Task Reads_the_settings_files_from_the_build_scripts_root()
+    public async Task Leaves_out_the_modules_marked_to_exclude_themselves()
     {
-        var root = Directory.CreateTempSubdirectory("rocket-build-scripts-");
-        try
-        {
-            await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.yaml"), "Rocket:\n  FromYaml: yaml\n  Overridden: yaml\n");
-            await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.local.yaml"), "Rocket:\n  Overridden: local\n");
-            await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.json"), """{ "Rocket": { "FromJson": "json" } }""");
+        await using var pipeline = await Pipeline.CreateBuilder().ConfigureDovetail();
 
-            await using var pipeline = await Pipeline
-                                            .CreateBuilder()
-                                            .ConfigureDovetail(z => z.Set(BuildScriptsRootJoint.BuildScriptsRootKey, root.FullName));
+        var plan = await pipeline.PlanAsync();
+        var modules = plan.Modules.Select(module => module.GetType()).ToArray();
 
-            var configuration = pipeline.Services.GetRequiredService<IConfiguration>();
-            await Assert.That(configuration["Rocket:FromYaml"]).IsEqualTo("yaml");
-            await Assert.That(configuration["Rocket:FromJson"]).IsEqualTo("json");
-            await Assert.That(configuration["Rocket:Overridden"]).IsEqualTo("local");
-        }
-        finally
-        {
-            root.Delete(true);
-        }
+        await Assert.That(modules).DoesNotContain(typeof(ExcludedModule));
+        await Assert.That(modules).Contains(typeof(BuildSolution));
     }
+
+    [Test]
+    public async Task Runs_an_excluded_module_that_is_added_on_purpose()
+    {
+        await using var pipeline = await Pipeline
+                                        .CreateBuilder()
+                                        .ConfigureDovetail(z => z.ConfigurePipelineBuilder((_, builder) => builder.AddModule<ExcludedModule>()));
+
+        var plan = await pipeline.PlanAsync();
+
+        await Assert.That(plan.Modules.Select(module => module.GetType())).Contains(typeof(ExcludedModule));
+    }
+}
+
+[ExcludeModule]
+public sealed class ExcludedModule : Module<bool>
+{
+    protected override Task<bool> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken) => Task.FromResult(true);
 }

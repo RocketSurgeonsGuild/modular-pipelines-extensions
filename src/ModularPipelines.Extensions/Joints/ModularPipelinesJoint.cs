@@ -12,7 +12,7 @@ internal sealed class ModularPipelinesJoint : IPipelineBuilderJoint
     public void Register(IDovetailContext context, PipelineBuilder builder)
     {
         // A factory rather than AddCommandInterceptor<T>: the interceptor needs the pipeline's working directory, which only the builder knows.
-        var workingDirectory = builder.WorkingDirectory;
+        var workingDirectory = new FolderPath(builder.WorkingDirectory);
         builder.Services.AddSingleton<ICommandInterceptor>(provider => new RootDirectoryInterceptor(provider.GetRequiredService<SharedSettings>(), workingDirectory));
     }
 }

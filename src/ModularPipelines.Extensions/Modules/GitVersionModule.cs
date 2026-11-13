@@ -12,7 +12,7 @@ public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<Git
 
         SetEnvironmentVariables(info);
 
-        context.Logger.LogInformation("GitVersion: {FullSemVer}", info.FullSemVer);
+        LogGitversionFullsemver(context.Logger, info.FullSemVer);
         return new Result(info);
     }
 
@@ -39,4 +39,7 @@ public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<Git
             .Select(p => new KeyValue(p.Name, p.GetValue(Info)?.ToString() ?? ""))
             .ToArray();
     }
+
+    [LoggerMessage(LogLevel.Information, "GitVersion: {FullSemVer}")]
+    static partial void LogGitversionFullsemver(ILogger logger, string fullSemVer);
 }

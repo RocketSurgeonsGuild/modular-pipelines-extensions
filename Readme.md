@@ -121,7 +121,7 @@ default branch keeps one history, which every pull request restores:
 
 ## Tests
 
-`TestSolution` runs one `dotnet test` per test project, each a sub module of its own, several at once, after the solution is built.
+`TestSolutionModule` runs one `dotnet test` per test project, each a sub module of its own, several at once, after the solution is built.
 Each project writes its TRX report and cobertura coverage into its own folder (`artifacts/logs/tests/<assembly>`). A failing project
 does not stop the others; the module fails at the end and lists every project that failed.
 
@@ -136,9 +136,12 @@ longest. The log shows the order, whether there is a fast lane, each project's e
 EnableTests: true
 TestMode: PerProject # or Solution: one dotnet test over the solution
 TestParallelism: 4 # test projects at once; half the processors by default
-ExcludeTests: # projects left out of the test run (globs relative to the root); they still build and pack
-    - test/Slow.Tests/**
 ```
+
+`GenerateCodeCoverageReportsModule` turns the cobertura files `TestSolutionModule` collects into an HTML report, summaries and SVG
+coverage badges, all under `artifacts/logs/coverage`. When `DocsModule` is in the pipeline, it copies those badges into the published
+docs site under `coverage-badges/`, so a docs page can reference them (for example `![coverage](coverage-badges/badge_combined.svg)`)
+and they end up on GitHub Pages alongside the rest of the docs.
 
 | Package                                    | NuGet                                                                                     |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------- |

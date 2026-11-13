@@ -6,11 +6,11 @@ using YamlDotNet.Serialization;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-public partial class ReadmeUpdater
+public partial class ReadmeUpdaterModule
 (
 ReadmeSettings readmeSettings,
     ArtifactSettings artifactSettings,
-    SolutionSettings settings) : Module<ReadmeUpdater.Result?>
+    SolutionSettings settings) : Module<ReadmeUpdaterModule.Result?>
 {
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {

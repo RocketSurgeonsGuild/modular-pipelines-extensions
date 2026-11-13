@@ -4,11 +4,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-public partial class RestoreSolution
+public partial class RestoreSolutionModule
 (
     SharedSettings sharedSettings,
     ArtifactSettings artifactSettings,
-    SolutionSettings solutionSettings = null!) : Module<RestoreSolution.Result>
+    SolutionSettings solutionSettings = null!) : Module<RestoreSolutionModule.Result>
 {
     protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {

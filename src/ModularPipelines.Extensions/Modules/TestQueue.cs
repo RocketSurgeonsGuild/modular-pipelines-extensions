@@ -3,11 +3,11 @@ using Humanizer;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-/// <summary>A test project in the order <see cref="TestSolution" /> queues them, with what its history says it takes.</summary>
+/// <summary>A test project in the order <see cref="TestSolutionModule" /> queues them, with what its history says it takes.</summary>
 /// <param name="Project">The test project.</param>
 /// <param name="Name">Its sub module name, which its history is kept under.</param>
 /// <param name="Estimate">The median of its last runs, or <see langword="null" /> when it has none.</param>
-public record TestQueueEntry(SolutionProject Project, string Name, TimeSpan? Estimate);
+public record TestQueueEntry(SolutionProjectsModule.Project Project, string Name, TimeSpan? Estimate);
 
 /// <summary>
 ///     Orders the test projects so a fixed number of them running at once finishes as early as it can, and gives the fast ones a slot of
@@ -31,17 +31,17 @@ internal static class TestQueue
     /// <summary>Orders the projects, reading each one's estimate by its sub module name.</summary>
     /// <param name="projects">The test projects to run.</param>
     /// <param name="estimates">The estimates by sub module name.</param>
-    public static ImmutableArray<TestQueueEntry> Order(IEnumerable<SolutionProject> projects, IReadOnlyDictionary<string, TimeSpan> estimates) =>
+    public static ImmutableArray<TestQueueEntry> Order(IEnumerable<SolutionProjectsModule.Project> projects, IReadOnlyDictionary<string, TimeSpan> estimates) =>
     [
         .. projects
           .Select(project => new TestQueueEntry(project, GetName(project), estimates.TryGetValue(GetName(project), out var estimate) ? estimate : null))
           .OrderBy(entry => entry.Estimate.HasValue)
           .ThenByDescending(entry => entry.Estimate ?? TimeSpan.Zero)
-          .ThenBy(entry => entry.Project.RootPath, StringComparer.Ordinal),
+          .ThenBy(entry => entry.Project.ProjectPath.Path, StringComparer.Ordinal),
     ];
 
     /// <summary>The sub module name of a project, which is also the key its history is kept under.</summary>
-    public static string GetName(SolutionProject project) => project.AssemblyName;
+    public static string GetName(SolutionProjectsModule.Project project) => project.AssemblyName;
 
     /// <summary>
     ///     Whether the first slot is a fast lane: there is more than one slot, more projects than slots (otherwise every project starts

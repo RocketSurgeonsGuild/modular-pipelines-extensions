@@ -14,14 +14,15 @@ public class JointTests
         typeof(BuildSolution),
         typeof(DocsModule),
         typeof(DownloadPackageIconModule),
-        typeof(GenerateCodeCoverageReports),
+        typeof(GenerateCodeCoverageReportsModule),
         typeof(GitVersionModule),
-        typeof(PackSolution),
-        typeof(ReadmeUpdater),
+        typeof(PackSolutionModule),
+        typeof(ReadmeUpdaterModule),
         typeof(RemoveUnusedDependenciesModule),
-        typeof(RestoreSolution),
+        typeof(RestoreSolutionModule),
         typeof(ShipPublicApisModule),
-        typeof(TestSolution),
+        typeof(SolutionProjectsModule),
+        typeof(TestSolutionModule),
     ];
 
     [Test]

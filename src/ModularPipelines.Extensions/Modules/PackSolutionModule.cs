@@ -4,10 +4,10 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<BuildSolution>]
 [DependsOn<GitVersionModule>]
-public partial class PackSolution
+public partial class PackSolutionModule
 (
     ArtifactSettings artifactSettings,
-    SolutionSettings settings) : Module<PackSolution.Result>
+    SolutionSettings settings) : Module<PackSolutionModule.Result>
 {
     protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {

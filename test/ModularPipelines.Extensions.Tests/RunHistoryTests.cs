@@ -207,7 +207,7 @@ public class RunHistoryTests
         try
         {
             var provider = Provider(root.FullName, new() { Samples = 3 });
-            var moduleId = ModuleId.FromType(typeof(TestSolution));
+            var moduleId = ModuleId.FromType(typeof(TestSolutionModule));
 
             // Saved side by side, as sub modules finish.
             await Task.WhenAll(

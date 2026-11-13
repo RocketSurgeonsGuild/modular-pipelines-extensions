@@ -14,31 +14,31 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///     ordered by their history (see <see cref="TestQueue" />); or one <c>dotnet test</c> over the solution, as
 ///     <see cref="TestSettings.Mode" /> says.
 /// </summary>
-[DependsOn<RestoreSolution>]
+[DependsOn<RestoreSolutionModule>]
 [DependsOn<BuildSolution>]
-public partial class TestSolution
+[DependsOn<SolutionProjectsModule>]
+public partial class TestSolutionModule
 (
     SharedSettings sharedSettings,
     ArtifactSettings artifactSettings,
     TestSettings testSettings,
     SolutionSettings settings = null!,
-    IModuleEstimatedTimeProvider? estimates = null) : Module<TestSolution.Result?>
+    IModuleEstimatedTimeProvider? estimates = null) : Module<TestSolutionModule.Result?>
 {
-    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
-        _ => SkipDecision.When(settings is null || !testSettings.IsEnabled,
-            "Tests are disabled or no solution was provided")
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(_ => SkipDecision.When(
+                                                                                                    settings is null || !testSettings.IsEnabled,
+                                                                                                    "Tests are disabled or no solution was provided"
+                                                                                                )
     );
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        // Cleaned first: the default settings are written into this folder. They are written on every run (not only when
-        // missing) so a newer library's defaults replace an older copy.
-        testSettings.TestsDirectory.Clean();
+        testSettings.TestArtifactsDirectory.Clean();
 
-        if (testSettings.UsesDefaultRunSettings || !testSettings.RunSettings.Exists)
+        if (!testSettings.RunSettings.Exists)
         {
             await using var tempFile = testSettings.RunSettings.GetStream(FileAccess.Write);
-            await typeof(TestSolution)
+            await typeof(TestSolutionModule)
                  .Assembly
                  // ReSharper disable once NullableWarningSuppressionIsUsed
                  .GetManifestResourceStream("Rocket.Surgery.ModularPipelines.Extensions.default.runsettings")!.CopyToAsync(tempFile, cancellationToken);
@@ -55,23 +55,17 @@ public partial class TestSolution
     [SuppressMessage("ModularPipelines", "MP0016", Justification = "Each call passes the module's token on. MP0016 only recognizes ExecuteAsync's own.")]
     private async Task<Result> RunProjectsAsync(IModuleContext context, FilePath binlog, CancellationToken cancellationToken)
     {
-        var projects = await SolutionProjects.EvaluateAsync(context, sharedSettings, settings.Solution, cancellationToken);
-        SolutionProjects.WarnAboutUnmatchedPatterns(context, projects, testSettings);
-        var excluded = projects.Where(project => project.IsTestProject && SolutionProjects.IsExcluded(project, testSettings)).ToArray();
-        if (excluded.Length > 0 && context.Logger.IsEnabled(LogLevel.Information))
-        {
-            context.Logger.LogInformation("Leaving {Count} test projects out of the test run: {Projects}", excluded.Length, string.Join(", ", excluded.Select(project => project.RootPath)));
-        }
+        var projects = ( await context.GetModule<SolutionProjectsModule>() ).ValueOrDefault ?? [];
 
         var moduleId = ModuleId.FromType(GetType());
         var queue = TestQueue.Order(
-            projects.Where(project => project.IsTestProject).Except(excluded),
+            projects.Where(project => project.IsTestProject),
             await GetEstimatesAsync(context, moduleId, cancellationToken)
         );
         var fastLane = TestQueue.UsesFastLane(queue, testSettings.Parallelism);
         if (context.Logger.IsEnabled(LogLevel.Information))
         {
-            context.Logger.LogInformation("Running {Queue}", TestQueue.Describe(queue, testSettings.Parallelism, fastLane));
+            LogRunningQueue(context.Logger, TestQueue.Describe(queue, testSettings.Parallelism, fastLane));
         }
 
         var outcomes = new ConcurrentBag<ProjectResult>();
@@ -80,10 +74,18 @@ public partial class TestSolution
         await Task.WhenAll(
             Enumerable
                .Range(0, Math.Min(testSettings.Parallelism, queue.Length))
-               .Select(slot => RunSlotAsync(context, moduleId, lanes, fastLane && slot == 0, outcomes, cancellationToken))
+               .Select(slot => RunSlotAsync(
+                           context,
+                           moduleId,
+                           lanes,
+                           fastLane && slot == 0,
+                           outcomes,
+                           cancellationToken
+                       )
+                )
         );
 
-        return new(null, FindTrxFiles(testSettings.TestsDirectory), binlog, [.. outcomes.OrderBy(outcome => outcome.Name, StringComparer.Ordinal)]);
+        return new(null, FindTrxFiles(testSettings.TestArtifactsDirectory), binlog, [.. outcomes.OrderBy(outcome => outcome.Name, StringComparer.Ordinal)]);
     }
 
     private async Task RunSlotAsync(
@@ -104,31 +106,35 @@ public partial class TestSolution
         }
     }
 
-    [SuppressMessage("ModularPipelines", "MP0016", Justification = "Each call passes a token: the slot's from Parallel.ForEachAsync, which ends with the module's. MP0016 only recognizes ExecuteAsync's own.")]
+    [SuppressMessage(
+        "ModularPipelines",
+        "MP0016",
+        Justification = "Each call passes a token: the slot's from Parallel.ForEachAsync, which ends with the module's. MP0016 only recognizes ExecuteAsync's own."
+    )]
     private async Task<ProjectResult> RunProjectAsync(IModuleContext context, ModuleId moduleId, TestQueueEntry entry, CancellationToken cancellationToken)
     {
-        var resultsDirectory = testSettings.TestsDirectory.GetFolder(entry.Name);
+        var resultsDirectory = testSettings.TestArtifactsDirectory.GetFolder(entry.Name);
         var started = Stopwatch.GetTimestamp();
         try
         {
             var commandResult = await context.RunSubModuleAsync(
                 entry.Name,
-                token => context.Tools.DotNet.TestAsync(CreateOptions(resultsDirectory) with { Project = entry.Project.Path.Path }, new(), token),
+                token => context.Tools.DotNet.TestAsync(CreateOptions(resultsDirectory) with { Project = entry.Project.ProjectPath.Path }, new(), token),
                 cancellationToken
             );
-            return new(entry.Name, entry.Project.Path, resultsDirectory, commandResult, null);
+            return new(entry.Name, entry.Project.ProjectPath, resultsDirectory, commandResult, null);
         }
         // One failing project must not stop the others; the module fails once they all finished.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             // ModularPipelines keeps the duration of a sub module that succeeded only, but a failed run took its time as well, and the
             // next run's order should know it.
-            if (estimates is not null)
+            if (estimates is { })
             {
                 await estimates.SaveSubModuleTimeAsync(moduleId, new(entry.Name, Stopwatch.GetElapsedTime(started)), cancellationToken);
             }
 
-            return new(entry.Name, entry.Project.Path, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message));
+            return new(entry.Name, entry.Project.ProjectPath, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message));
         }
     }
 
@@ -154,13 +160,23 @@ public partial class TestSolution
         var solution = await SolutionToTest(context, cancellationToken);
         try
         {
-            var commandResult = await context.Tools.DotNet.TestAsync(CreateOptions(testSettings.TestsDirectory) with { Solution = solution }, new(), cancellationToken);
-            return new(commandResult, FindTrxFiles(testSettings.TestsDirectory), binlog, [new(settings.Solution.Name, settings.Solution, testSettings.TestsDirectory, commandResult, null)]);
+            var commandResult = await context.Tools.DotNet.TestAsync(CreateOptions(testSettings.TestArtifactsDirectory) with { Solution = solution }, new(), cancellationToken);
+            return new(
+                commandResult,
+                FindTrxFiles(testSettings.TestArtifactsDirectory),
+                binlog,
+                [new(settings.Solution.Name, settings.Solution, testSettings.TestArtifactsDirectory, commandResult, null)]
+            );
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             var commandResult = ( ex as CommandException )?.Result;
-            return new(commandResult, FindTrxFiles(testSettings.TestsDirectory), binlog, [new(settings.Solution.Name, settings.Solution, testSettings.TestsDirectory, commandResult, FirstLine(ex.Message))]);
+            return new(
+                commandResult,
+                FindTrxFiles(testSettings.TestArtifactsDirectory),
+                binlog,
+                [new(settings.Solution.Name, settings.Solution, testSettings.TestArtifactsDirectory, commandResult, FirstLine(ex.Message))]
+            );
         }
     }
 
@@ -189,10 +205,13 @@ public partial class TestSolution
     // anyway keeps a combined report from being listed alongside the ones it repeats.
     private static ImmutableList<FilePath> FindTrxFiles(FolderPath directory) =>
         directory.Exists
-            ? [.. directory.GetFiles(
-                x => x.Name.EndsWith(".trx", StringComparison.OrdinalIgnoreCase),
-                x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
-            )]
+            ?
+            [
+                .. directory.GetFiles(
+                    x => x.Name.EndsWith(".trx", StringComparison.OrdinalIgnoreCase),
+                    x => x.Name.Equals("merged", StringComparison.OrdinalIgnoreCase)
+                )
+            ]
             : [];
 
     /// <summary>Fails the module, listing every project that failed, once all of them finished.</summary>
@@ -212,49 +231,27 @@ public partial class TestSolution
     /// </summary>
     private async Task<FilePath> SolutionToTest(IModuleContext context, CancellationToken cancellationToken)
     {
-        if (testSettings.ExcludeTests.Count == 0) return settings.Solution;
-
         var serializer = SolutionSerializers.GetSerializerByMoniker(settings.Solution.Path)
          ?? throw new InvalidOperationException($"Not a solution file: {settings.Solution.Path}");
         var model = await serializer.OpenAsync(settings.Solution.Path, cancellationToken);
         var solutionDirectory = Path.GetDirectoryName(settings.Solution.Path)!;
 
         var included = new List<string>();
-        var excluded = new List<string>();
-        var unmatched = testSettings.ExcludeTests.ToHashSet(StringComparer.Ordinal);
         foreach (var project in model.SolutionProjects)
         {
             // the path relative to the solution is what a solution filter lists; the patterns are relative to the root directory
             var projectPath = project.FilePath.Replace('\\', '/');
             var fromRoot = Path.GetRelativePath(sharedSettings.RootDirectory.Path, Path.GetFullPath(Path.Combine(solutionDirectory, projectPath))).Replace('\\', '/');
-            var patterns = testSettings.ExcludeTests.Where(pattern => SolutionProjects.Matches(pattern, fromRoot)).ToArray();
-            if (patterns.Length == 0)
-            {
-                included.Add(projectPath);
-                continue;
-            }
-
-            excluded.Add(fromRoot);
-            unmatched.ExceptWith(patterns);
+            included.Add(projectPath);
         }
 
-        foreach (var pattern in unmatched)
-        {
-            context.Logger.LogWarning("ExcludeTests pattern {Pattern} matches no project in {Solution}", pattern, settings.Solution.Name);
-        }
-
-        if (context.Logger.IsEnabled(LogLevel.Information))
-        {
-            context.Logger.LogInformation("Leaving {Count} projects out of the test run: {Projects}", excluded.Count, string.Join(", ", excluded));
-        }
-
-        var filter = testSettings.TestsDirectory.GetFile($"{Path.GetFileNameWithoutExtension(settings.Solution.Name)}.tests.slnf");
+        var filter = testSettings.TestArtifactsDirectory.GetFile($"{Path.GetFileNameWithoutExtension(settings.Solution.Name)}.tests.slnf");
         await using (var stream = filter.GetStream(FileAccess.Write))
         await using (var writer = new Utf8JsonWriter(stream, new() { Indented = true }))
         {
             writer.WriteStartObject();
             writer.WriteStartObject("solution");
-            writer.WriteString("path", Path.GetRelativePath(testSettings.TestsDirectory.Path, settings.Solution.Path).Replace('\\', '/'));
+            writer.WriteString("path", Path.GetRelativePath(testSettings.TestArtifactsDirectory.Path, settings.Solution.Path).Replace('\\', '/'));
             writer.WriteStartArray("projects");
             foreach (var project in included)
             {
@@ -283,4 +280,7 @@ public partial class TestSolution
     /// <param name="CommandResult">The command's result, when it ran.</param>
     /// <param name="Error">Why it failed, or <see langword="null" />.</param>
     public record ProjectResult(string Name, FilePath Project, FolderPath ResultsDirectory, CommandResult? CommandResult, string? Error);
+
+    [LoggerMessage(LogLevel.Information, "Running {Queue}")]
+    static partial void LogRunningQueue(ILogger logger, string queue);
 }

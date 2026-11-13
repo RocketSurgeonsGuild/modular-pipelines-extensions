@@ -4,8 +4,10 @@ using Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-// The API reference is generated from the build's output, so the docs only build after the solution built successfully.
+// The API reference is generated from the build's output, so the docs only build after the solution built successfully. Coverage
+// badges are optional: a consumer without tests, or with EnableTests: false, still gets a docs build.
 [DependsOn<BuildSolution>]
+[DependsOn<GenerateCodeCoverageReportsModule>(Optional = true)]
 public class DocsModule(DocsModule.Settings settings, ArtifactSettings artifactSettings) : Module<DocsModule.Result?>
 {
 
@@ -23,9 +25,19 @@ public class DocsModule(DocsModule.Settings settings, ArtifactSettings artifactS
             cancellationToken
         );
 
-        await settings.DocsOutputDirectory.CopyToAsync(artifactSettings.ArtifactsDirectory / "docs", cancellationToken: cancellationToken);
+        var docsOutputDirectory = artifactSettings.ArtifactsDirectory / "docs";
+        await settings.DocsOutputDirectory.CopyToAsync(docsOutputDirectory, cancellationToken: cancellationToken);
 
-        return result.ExitCode == 0 ? new Result(artifactSettings.ArtifactsDirectory / "docs") : null;
+        // Published alongside the built site, not into DocsOutputDirectory before the build, so this works regardless of which
+        // static site generator produced it and how it handles its own static-asset folder.
+        var coverageModule = context.GetModuleIfRegistered<GenerateCodeCoverageReportsModule>();
+        var coverage = coverageModule is null ? null : ( await coverageModule ).ValueOrDefault;
+        if (coverage is { CoverageBadgeDirectory.Exists: true })
+        {
+            await coverage.CoverageBadgeDirectory.CopyToAsync(docsOutputDirectory / "coverage-badges", cancellationToken: cancellationToken);
+        }
+
+        return result.ExitCode == 0 ? new Result(docsOutputDirectory) : null;
     }
 
 

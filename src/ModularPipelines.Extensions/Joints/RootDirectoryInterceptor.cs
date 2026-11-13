@@ -1,4 +1,4 @@
-namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Joints;
 
 /// <summary>
 ///     Runs every command that does not choose its own working directory from the repository root, instead of the pipeline's working

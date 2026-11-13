@@ -1,12 +1,15 @@
+using Joinery.Dovetail;
+using Joinery.Dovetail.Attributes;
+using Joinery.Dovetail.Joints;
 using Microsoft.Extensions.DependencyInjection;
-using Rocket.Surgery.ModularPipelines.Extensions.Support;
 
-namespace Rocket.Surgery.ModularPipelines.Extensions.Conventions;
+namespace Rocket.Surgery.ModularPipelines.Extensions.Joints;
 
-[ExportConvention]
-internal class ModulePipelinesConvention : IPipelineBuilderConvention
+/// <summary>Sets up what every module of the library relies on: commands run from the repository root.</summary>
+[DovetailExport]
+internal sealed class ModularPipelinesJoint : IPipelineBuilderJoint
 {
-    public void Register(IConventionContext context, PipelineBuilder builder)
+    public void Register(IDovetailContext context, PipelineBuilder builder)
     {
         // A factory rather than AddCommandInterceptor<T>: the interceptor needs the pipeline's working directory, which only the builder knows.
         var workingDirectory = builder.WorkingDirectory;

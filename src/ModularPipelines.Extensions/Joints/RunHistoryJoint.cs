@@ -2,10 +2,7 @@ using Joinery.Dovetail;
 using Joinery.Dovetail.Attributes;
 using Joinery.Dovetail.Joints;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using ModularPipelines.Caching;
-using ModularPipelines.Options;
 using Rocket.Surgery.ModularPipelines.Extensions.History;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Joints;
@@ -30,26 +27,48 @@ public sealed class RunHistoryJoint : IPipelineBuilderJoint
     public void Register(IDovetailContext context, PipelineBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        // The run report options are applied once the services are built, from IOptions<RocketHistoryOptions>.
-        builder.Services.AddSingleton<IConfigureOptions<PipelineOptions>, RunHistoryPipelineOptions>();
+        // The module cache is a registration, not an option, so it is decided while the builder is set up. The configuration binding
+        // generator makes this Get reflection free.
+        var historyOptions = builder.Configuration.GetSection("History").Get<RocketHistoryOptions>() ?? new();
+        var root = new SharedSettings(builder.Configuration).RootDirectory;
+
+        builder.ConfigureOptions(options => options with
+        {
+            RunReport = historyOptions.Enabled
+                    ? options.RunReport with
+                    {
+                        HistoryDirectory = root.GetFolder(historyOptions.Directory),
+                        HistoryRetention = historyOptions.Retention,
+                        GlobalHistoryRetention = options.RunReport.GlobalHistoryRetention > 0
+                            ? Math.Max(options.RunReport.GlobalHistoryRetention, historyOptions.Retention)
+                            : 20,
+                        PipelineIdentity = historyOptions.Identity ?? DefaultIdentity(builder.WorkingDirectory),
+                    }
+                    : options.RunReport with { HistoryRetention = 0 }
+        }
+        );
 
         // Always: ModularPipelines' own provider keeps the estimates in the user's application-data folder.
         builder.AddModuleEstimatedTimeProvider<RunHistoryEstimatedTimeProvider>();
 
-        // The module cache is a registration, not an option, so it is decided while the builder is set up. The configuration binding
-        // generator makes this Get reflection free.
-        var options = builder.Configuration.GetSection("History").Get<RocketHistoryOptions>() ?? new();
-        if (options.ModuleCache.Enabled)
+        if (historyOptions.ModuleCache.Enabled)
         {
-            var root = new SharedSettings(builder.Configuration).RootDirectory.Path;
             // Only the modules that declare cache inputs, key parts, environment variables or a version key are cached; the rest
             // always run. Cache input patterns are relative to the repository root.
             builder.AddModuleCache<FileSystemModuleCache>(o => o with
             {
                 WorkingDirectory = root,
-                CacheDirectory = Path.GetFullPath(options.ModuleCache.Directory, root),
-            }
-            );
+                CacheDirectory = root.GetFolder(historyOptions.ModuleCache.Directory),
+            });
         }
+    }
+
+    private static string DefaultIdentity(string root)
+    {
+        var repository = Environment.GetEnvironmentVariable("GITHUB_REPOSITORY");
+        if (string.IsNullOrWhiteSpace(repository)) return Path.GetFileName(Path.TrimEndingDirectorySeparator(root));
+
+        var workflow = Environment.GetEnvironmentVariable("GITHUB_WORKFLOW");
+        return string.IsNullOrWhiteSpace(workflow) ? repository : $"{repository}/{workflow}";
     }
 }

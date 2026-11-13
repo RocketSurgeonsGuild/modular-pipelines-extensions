@@ -8,7 +8,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Joints;
 ///     By the time an interceptor runs, a command without a working directory has already been given the pipeline's, so that is what
 ///     "not chosen" looks like here.
 /// </remarks>
-internal sealed class RootDirectoryInterceptor(SharedSettings sharedSettings, string pipelineWorkingDirectory) : ICommandInterceptor
+internal sealed class RootDirectoryInterceptor(SharedSettings sharedSettings, FolderPath pipelineWorkingDirectory) : ICommandInterceptor
 {
     private readonly string _pipelineWorkingDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(pipelineWorkingDirectory));
 

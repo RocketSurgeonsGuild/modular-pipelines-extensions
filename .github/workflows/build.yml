@@ -44,14 +44,13 @@ jobs:
                   experimental: true
                   github_token: ${{ secrets.GITHUB_TOKEN }}
             - name: 🕰️ Restore run history
-              # Run history and the duration estimates made from it live in .modularpipelines/, which a new runner starts without.
-              # Each run saves a new entry and restores the newest one of its branch, or else of main.
-              uses: actions/cache@v6
+              # Run history, the duration estimates and the module cache live in .modularpipelines/, which a new runner starts
+              # without. Every run restores the newest one saved from main; only main saves.
+              uses: actions/cache/restore@v6
               with:
                   path: .modularpipelines
-                  key: modularpipelines-${{ github.workflow }}-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: modularpipelines-${{ github.workflow }}-main-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      modularpipelines-${{ github.workflow }}-${{ github.ref_name }}-
                       modularpipelines-${{ github.workflow }}-main-
             - name: ⚙️ Build
               id: build
@@ -59,6 +58,12 @@ jobs:
                   mise run build
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: 🕰️ Save run history
+              if: always() && github.ref == 'refs/heads/main'
+              uses: actions/cache/save@v6
+              with:
+                  path: .modularpipelines
+                  key: modularpipelines-${{ github.workflow }}-main-${{ github.run_id }}-${{ github.run_attempt }}
             - name: 🏺 Save GitHub event
               if: always()
               run: cp "$GITHUB_EVENT_PATH" artifacts/event.json || true

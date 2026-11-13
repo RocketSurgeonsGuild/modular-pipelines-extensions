@@ -31,7 +31,8 @@ public class JointTests
         await using var pipeline = await Pipeline.CreateBuilder().ConfigureDovetail();
 
         var plan = await pipeline.PlanAsync();
-        var modules = plan.Modules.Select(module => module.GetType()).ToArray();
+        // The scan covers the build host too, which here is this test assembly with its own test modules.
+        var modules = plan.Modules.Select(module => module.GetType()).Where(type => type.Assembly == typeof(BuildSolution).Assembly).ToArray();
 
         await Assert.That(modules).IsEquivalentTo(LibraryModules);
     }

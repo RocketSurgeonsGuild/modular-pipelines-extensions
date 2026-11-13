@@ -1,7 +1,9 @@
+using Joinery.Dovetail.Joints;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using ModularPipelines.Caching;
 using ModularPipelines.Options;
 using ModularPipelines.Reporting;
 using Rocket.Surgery.ModularPipelines.Extensions.History;
@@ -33,13 +35,76 @@ public class RunHistoryTests
     }
 
     [Test]
-    public async Task Turns_run_history_off_when_disabled()
+    public async Task Turns_run_history_off_and_keeps_the_estimates_when_disabled()
     {
         await using var pipeline = await CreateBuilder(("History:Enabled", "false")).ConfigureDovetail();
 
         var runReport = pipeline.Services.GetRequiredService<IOptions<PipelineOptions>>().Value.RunReport;
         await Assert.That(runReport.HistoryRetention).IsEqualTo(0);
-        await Assert.That(pipeline.Services.GetServices<IModuleEstimatedTimeProvider>().OfType<RunHistoryEstimatedTimeProvider>()).IsEmpty();
+        await Assert.That(pipeline.Services.GetServices<IModuleEstimatedTimeProvider>().OfType<RunHistoryEstimatedTimeProvider>()).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task Keeps_the_module_cache_under_the_root_directory()
+    {
+        var root = Directory.CreateTempSubdirectory("rocket-cache-");
+        try
+        {
+            await using var pipeline = await CreateBuilder(("RootDirectory", root.FullName)).ConfigureDovetail();
+
+            var cache = pipeline.Services.GetRequiredService<IOptions<ModuleCacheOptions>>().Value;
+            await Assert.That(pipeline.Services.GetService<IModuleCacheStore>()).IsTypeOf<FileSystemModuleCache>();
+            await Assert.That(cache.WorkingDirectory).IsEqualTo(root.FullName);
+            await Assert.That(cache.CacheDirectory).IsEqualTo(Path.Combine(root.FullName, ".modularpipelines", "module-cache"));
+        }
+        finally
+        {
+            root.Delete(true);
+        }
+    }
+
+    [Test]
+    public async Task Leaves_the_module_cache_out_when_disabled()
+    {
+        await using var pipeline = await CreateBuilder(("History:ModuleCache:Enabled", "false")).ConfigureDovetail();
+
+        await Assert.That(pipeline.Services.GetService<IModuleCacheStore>()).IsNull();
+    }
+
+    [Test]
+    public async Task Restores_a_cacheable_module_and_keeps_everything_under_modularpipelines()
+    {
+        var root = Directory.CreateTempSubdirectory("rocket-cache-");
+        try
+        {
+            CachedModule.Executions = 0;
+
+            var first = await RunCachedModuleAsync(root.FullName);
+            var second = await RunCachedModuleAsync(root.FullName);
+
+            await Assert.That(first.GetResult<CachedModule, string>().Status).IsEqualTo(ModuleStatus.Succeeded);
+            await Assert.That(second.GetResult<CachedModule, string>().Status).IsEqualTo(ModuleStatus.RestoredFromCache);
+            await Assert.That(second.GetResult<CachedModule, string>().ValueOrDefault).IsEqualTo("cached");
+            await Assert.That(CachedModule.Executions).IsEqualTo(1);
+            await Assert.That(root.GetDirectories().Select(z => z.Name)).IsEquivalentTo([".modularpipelines"]);
+            await Assert.That(new DirectoryInfo(Path.Combine(root.FullName, ".modularpipelines")).GetDirectories().Select(z => z.Name))
+                       .IsEquivalentTo(["estimates", "module-cache", "run-history"]);
+        }
+        finally
+        {
+            root.Delete(true);
+        }
+    }
+
+    private static async Task<PipelineSummary> RunCachedModuleAsync(string root)
+    {
+        await using var pipeline = await CreateBuilder(("RootDirectory", root), ("History:Identity", "cache-test"))
+                                       .ConfigureDovetail(
+                                            z => z
+                                                .ExceptJoint(typeof(ModulesJoint))
+                                                .ConfigurePipelineBuilder((_, builder) => builder.AddModule<CachedModule>())
+                                        );
+        return await pipeline.RunAsync();
     }
 
     [Test]
@@ -165,6 +230,20 @@ public class RunHistoryTests
 
     private static ModuleDurationSample Sample(ModuleStatus status, int seconds) =>
         new(Guid.NewGuid().ToString("N"), DateTimeOffset.UtcNow, status, TimeSpan.FromSeconds(seconds));
+
+    // Opts into the module cache with a key part; ModularPipelines caches only the modules that declare what their result depends on.
+    internal sealed class CachedModule : Module<string>
+    {
+        public static int Executions;
+
+        protected override void Configure(ModuleConfigurationBuilder module) => module.WithCacheKeyPart("version=1");
+
+        protected override Task<string> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Executions);
+            return Task.FromResult("cached");
+        }
+    }
 
     private sealed class FakeHistoryReader(params ModuleDurationSample[] samples) : IRunHistoryReader
     {

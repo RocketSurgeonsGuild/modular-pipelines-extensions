@@ -18,8 +18,8 @@ public sealed record RocketHistoryOptions
     public static readonly string DefaultModuleCacheDirectory = Path.Combine(".modularpipelines", "module-cache");
 
     /// <summary>
-    ///     Whether run history and the history-based estimates are on (<c>History:Enabled</c>, default <see langword="true" />). Off,
-    ///     ModularPipelines keeps no run history at all.
+    ///     Whether run history is kept (<c>History:Enabled</c>, default <see langword="true" />). Off, ModularPipelines keeps no run
+    ///     history at all, and the estimates are the last duration of each module.
     /// </summary>
     public bool Enabled { get; init; } = true;
 
@@ -52,10 +52,11 @@ public sealed record RocketHistoryOptions
     public int EstimateSamples { get; init; } = 10;
 
     /// <summary>
-    ///     Whether the file-system module cache is registered (<c>History:ModuleCache:Enabled</c>, default <see langword="false" />). It
-    ///     only skips modules that declare their inputs with <c>[CacheInputs]</c>.
+    ///     Whether the file-system module cache is registered (<c>History:ModuleCache:Enabled</c>, default <see langword="true" />). It
+    ///     only restores modules that declare what their result depends on (<c>[CacheInputs]</c>, <c>WithCacheKeyPart</c>,
+    ///     <c>WithCacheEnvironmentVariable</c> or <c>WithCacheAssemblyVersionKey</c>); <c>--no-cache</c> bypasses it for one run.
     /// </summary>
-    public bool ModuleCache { get; init; }
+    public bool ModuleCache { get; init; } = true;
 
     /// <summary>Where the module cache is kept (<c>History:ModuleCache:Directory</c>).</summary>
     public string ModuleCacheDirectory { get; init; } = DefaultModuleCacheDirectory;

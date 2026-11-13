@@ -67,32 +67,39 @@ ModularPipelines' own `--skip-module` still works at run time.
 A host that builds the pipeline itself can apply the same joints with
 `builder.AddPlugin(new DovetailPipelinePlugin(DovetailContextBuilder.Create()))`.
 
-## Run history
+## Run history, estimates and the module cache
 
-ModularPipelines writes a report of every run to `.modularpipelines/run-history` (see
-[run reports](https://modularpipelines.tomlonghurst.dev/docs/how-to/run-reports)), and shows each module's change from the previous
-successful run. `RunHistoryJoint` (or `builder.AddRocketHistory()` without the joints) adds:
+Everything ModularPipelines remembers between runs is kept under `.modularpipelines/` in the repository, instead of the user's
+application-data folders, so one CI cache restores all of it. `RunHistoryJoint` (or `builder.AddRocketHistory()` without the joints)
+sets this up:
+
+| Folder                              | What it holds                                                                                            |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `.modularpipelines/run-history`     | A [report of every run](https://modularpipelines.tomlonghurst.dev/docs/how-to/run-reports), with each module's change from the last successful run. |
+| `.modularpipelines/estimates`       | The last duration of each module and sub module.                                                         |
+| `.modularpipelines/module-cache`    | The [module cache](https://modularpipelines.tomlonghurst.dev/docs/how-to/module-caching).                |
 
 - **A stable pipeline identity.** Runs are grouped by `GITHUB_REPOSITORY/GITHUB_WORKFLOW` on GitHub Actions, or by the name of the root
   folder elsewhere. ModularPipelines would otherwise hash the module list, so adding a module would start a new history.
-- **Estimates from history.** Each module's estimated duration is the median of its last successful runs. The scheduler starts the
-  longest chain first with these estimates, and the progress display shows them. Sub modules, and modules with no successful run yet,
-  use their last duration, kept in `.modularpipelines/estimates` (ModularPipelines would keep it in the user's application-data folder,
-  which a CI cache does not restore).
-- **An opt-in module cache** that skips modules whose declared `[CacheInputs]` did not change.
+- **Estimates from history.** Each module's estimated duration is the median of its last successful runs, or else its last duration.
+  The scheduler starts the longest chain first with these estimates, and the progress display shows them.
+- **The module cache is on.** It restores only the modules that declare what their result depends on: `[CacheInputs]` file patterns
+  (relative to the repository root), `WithCacheKeyPart`, `WithCacheEnvironmentVariable` or `WithCacheAssemblyVersionKey`. Every other
+  module runs as before. Declare the files a restored module must recreate with `[ProducesArtifact]`; `--no-cache` bypasses the cache
+  for one run.
 
 The settings live in the `History` section, usually in `build/appsettings.yaml`:
 
 ```yaml
 History:
-    Enabled: true # false turns run history off
+    Enabled: true # false turns run history off; the estimates are still kept
     Directory: .modularpipelines/run-history # relative to the repository root
     EstimatesDirectory: .modularpipelines/estimates
     Retention: 30 # runs kept for this pipeline
     Samples: 10 # runs an estimate is the median of
     Identity: my-org/my-repo # defaults to GITHUB_REPOSITORY/GITHUB_WORKFLOW, or the root folder's name
     ModuleCache:
-        Enabled: false
+        Enabled: true # false leaves the module cache out
         Directory: .modularpipelines/module-cache
 ```
 

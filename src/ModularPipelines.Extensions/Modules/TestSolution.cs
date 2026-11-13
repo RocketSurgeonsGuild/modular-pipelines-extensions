@@ -47,10 +47,12 @@ public partial class TestSolution
                                        "--coverage-settings", testSettings.RunSettings,
                                        //  "--coverage-output", testSettings.CoverageDirectory.GetFile("coverage.cobertura"),
                                        "--coverage-output-format", "cobertura",
-                                       // No --report-trx-filename: one fixed name is shared by every test module, so with
-                                       // several projects or target frameworks each report overwrote the one before. The
-                                       // default name is unique per module ({asm}_{tfm}_{arch}.trx since MTP 2.3).
+                                       // One TRX per test application, under its default name: a single --report-trx-filename made every
+                                       // assembly (and target framework) write the same file, so only the last one's results were kept.
                                        "--report-trx",
+                                       // Without it, dotnet test also merges the TRX files (and the coverage) into merged/, and a reader of
+                                       // every TRX counts each test twice.
+                                       "--no-artifact-post-processing",
                                    ],
                                    // TODO: Add verbosity, and loggers.
                                    // Arguments

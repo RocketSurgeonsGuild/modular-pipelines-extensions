@@ -34,7 +34,8 @@ public sealed record RocketHistoryOptions
 
     /// <summary>
     ///     Where the last durations of modules and their sub modules are kept (<c>History:EstimatesDirectory</c>). Run history only
-    ///     records whole modules, so sub module estimates live here.
+    ///     records whole modules, so sub module estimates live here, as does the last run of each test project
+    ///     (<see cref="TestProjectHistory" />).
     /// </summary>
     public string EstimatesDirectory { get; init; } = DefaultEstimatesDirectory;
 

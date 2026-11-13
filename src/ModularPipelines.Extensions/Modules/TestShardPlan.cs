@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
-using ModularPipelines.Reporting;
+using Rocket.Surgery.ModularPipelines.Extensions.History;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -9,9 +10,9 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 /// </summary>
 /// <remarks>
 ///     The split is this module's result, which every shard depends on, so all of them work from the same split. Recomputing it in
-///     each shard could run a project twice or not at all if the durations changed in between. Projects are placed longest first by
-///     the durations their sub modules took last time (under <see cref="TestSolution" /> or a shard), or round-robin by path when there
-///     are none.
+///     each shard could run a project twice or not at all, since each project's run is recorded as soon as it finishes. Projects are
+///     placed longest first by how long each took in its last run (<see cref="TestProjectHistory" />, recorded by
+///     <see cref="TestSolution" /> or a shard), or round-robin by path when none of them has run before.
 /// </remarks>
 [DependsOn<RestoreSolution>]
 public partial class TestShardPlan
@@ -19,8 +20,8 @@ public partial class TestShardPlan
     SharedSettings sharedSettings,
     TestSettings testSettings,
     TestShardSet shards,
-    IModuleEstimatedTimeProvider estimates,
-    SolutionSettings settings = null!) : Module<TestShardPlan.Result?>
+    SolutionSettings settings = null!,
+    TestProjectHistory? projectHistory = null) : Module<TestShardPlan.Result?>
 {
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
         _ => SkipDecision.When(settings is null || !testSettings.IsEnabled || !shards.IsEnabled,
@@ -29,53 +30,78 @@ public partial class TestShardPlan
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        // Cleaned here, before any shard starts, because shards that share this machine must not clean each other's results.
+        // Cleaned here, before any shard starts, because the shards must not clean each other's results.
         testSettings.TestsDirectory.Clean();
 
         var projects = await SolutionProjects.EvaluateAsync(context, sharedSettings, settings.Solution, cancellationToken);
         SolutionProjects.WarnAboutUnmatchedPatterns(context, projects, testSettings);
         var selected = projects.Where(project => project.IsTestProject && SolutionProjects.IsSelected(project, testSettings)).ToArray();
 
-        var durations = await GetDurationsAsync(cancellationToken);
-        var shardAssignments = TestShardPartitioner.Partition(
-            selected.Select(project => new TestShardItem(
-                    project.RootPath,
-                    durations.TryGetValue(TestProjectRunner.GetName(project, testSettings), out var duration) ? duration : null
-                )
-            ),
-            shards.Count
-        );
+        var lastRuns = projectHistory is null
+            ? []
+            : await projectHistory.GetLastRunsAsync(cancellationToken);
+        var items = GetItems(selected.Select(project => (project.RootPath, TestProjectRunner.GetName(project, testSettings))), lastRuns);
+        var shardAssignments = TestShardPartitioner.Partition(items, shards.Count);
 
         if (context.Logger.IsEnabled(LogLevel.Information))
         {
-            context.Logger.LogInformation(
-                "Test projects split between {Count} shards:{Shards}",
-                shards.Count,
-                string.Concat(
-                    shardAssignments.Select(shard =>
-                        $"{Environment.NewLine}  shard {shard.Number}: {( shard.Projects.Count == 0 ? "nothing" : string.Join(", ", shard.Projects) )} (estimated {shard.Estimate})"
-                    )
-                )
-            );
+            context.Logger.LogInformation("{Plan}", Describe(shardAssignments, items, lastRuns));
         }
 
         return new([.. projects], [.. shardAssignments]);
     }
 
-    // The last duration of each project's sub module, under TestSolution or under any shard; a shard's is the newer when both exist.
-    private async Task<Dictionary<string, TimeSpan>> GetDurationsAsync(CancellationToken cancellationToken)
-    {
-        var durations = new Dictionary<string, TimeSpan>(StringComparer.Ordinal);
-        foreach (var moduleType in shards.ModuleTypes.Prepend(typeof(TestSolution)))
-        {
-            foreach (var estimate in await estimates.GetSubModuleEstimatedTimesAsync(ModuleId.FromType(moduleType), cancellationToken))
-            {
-                durations[estimate.SubModuleName] = estimate.EstimatedDuration;
-            }
-        }
+    /// <summary>
+    ///     The projects to split, each with the duration of its last run, failed or not, keyed by its sub module name;
+    ///     <see langword="null" /> for a project that has not run before.
+    /// </summary>
+    internal static ImmutableArray<TestShardItem> GetItems(
+        IEnumerable<(string Key, string Name)> projects,
+        IReadOnlyDictionary<string, TestProjectRun> lastRuns
+    ) =>
+    [
+        .. projects.Select(project => new TestShardItem(
+                project.Key,
+                lastRuns.TryGetValue(project.Name, out var run) ? run.Duration : null,
+                project.Name
+            )
+        ),
+    ];
 
-        return durations;
+    /// <summary>The log line that says how the projects were split, and from what.</summary>
+    internal static string Describe(
+        IReadOnlyList<TestShardAssignment> assignments,
+        IReadOnlyList<TestShardItem> items,
+        IReadOnlyDictionary<string, TestProjectRun> lastRuns
+    )
+    {
+        var byKey = items.DistinctBy(item => item.Key, StringComparer.Ordinal).ToDictionary(item => item.Key, StringComparer.Ordinal);
+        var fallback = TestShardPartitioner.GetFallback(items);
+        var source = fallback is null
+            ? "round-robin by path: no test project has a previous run"
+            : "by the duration of each project's last run";
+
+        return $"Test projects split between {assignments.Count} shards {source}:"
+          + string.Concat(
+                assignments.Select(shard =>
+                    $"{Environment.NewLine}  shard {shard.Number}"
+                  + ( fallback is null ? "" : $" (estimated {Format(shard.Estimate)})" )
+                  + ": "
+                  + ( shard.Projects.Count == 0
+                        ? "nothing"
+                        : string.Join(", ", shard.Projects.Select(key => $"{key} ({DescribeProject(byKey[key], lastRuns, fallback)})")) )
+                )
+            );
     }
+
+    private static string DescribeProject(TestShardItem item, IReadOnlyDictionary<string, TestProjectRun> lastRuns, TimeSpan? fallback) =>
+        item.Name is { } name && lastRuns.TryGetValue(name, out var run)
+            ? $"last run {Format(run.Duration)}{( run.Succeeded ? "" : ", failed" )}"
+            : fallback is { } median
+                ? $"no previous run, counted as the median {Format(median)}"
+                : "no previous run";
+
+    private static string Format(TimeSpan duration) => duration.TotalSeconds.ToString("0.0s", CultureInfo.InvariantCulture);
 
     /// <summary>The split of the test projects between the shards.</summary>
     /// <param name="Projects">Every project of the solution, which the default coverage settings are scoped by.</param>

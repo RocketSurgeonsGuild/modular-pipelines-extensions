@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using ModularPipelines.Exceptions;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using Rocket.Surgery.ModularPipelines.Extensions.History;
 using InvalidOperationException = System.InvalidOperationException;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -29,6 +31,7 @@ internal static class TestProjectRunner
         SolutionSettings settings,
         TestSettings testSettings,
         FilePath runSettings,
+        TestProjectHistory? history,
         CancellationToken cancellationToken
     )
     {
@@ -40,6 +43,8 @@ internal static class TestProjectRunner
             {
                 var name = GetName(project, testSettings);
                 var resultsDirectory = GetResultsDirectory(project, testSettings);
+                var started = Stopwatch.GetTimestamp();
+                TestSolution.ProjectResult outcome;
                 try
                 {
                     var commandResult = await context.RunSubModuleAsync(
@@ -51,12 +56,22 @@ internal static class TestProjectRunner
                         ),
                         cancellationToken
                     );
-                    outcomes.Add(new(name, project.Path, resultsDirectory, commandResult, null));
+                    outcome = new(name, project.Path, resultsDirectory, commandResult, null);
                 }
                 // One failing project must not stop the others; the module fails once they all finished.
                 catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {
-                    outcomes.Add(new(name, project.Path, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message)));
+                    outcome = new(name, project.Path, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message));
+                }
+
+                outcomes.Add(outcome);
+                // A failed run is recorded too: it is still the project's last run, which the next split of the test shards goes by.
+                if (history is not null)
+                {
+                    await history.RecordAsync(
+                        new(name, Stopwatch.GetElapsedTime(started), outcome.Error is null, DateTimeOffset.UtcNow),
+                        cancellationToken
+                    );
                 }
             }
         );

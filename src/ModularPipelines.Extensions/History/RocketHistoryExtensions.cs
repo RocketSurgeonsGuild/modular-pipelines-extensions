@@ -10,7 +10,8 @@ public static class RocketHistoryExtensions
 {
     /// <summary>
     ///     Keeps run history under the repository (<c>.modularpipelines/run-history</c> by default) with a stable pipeline identity, and
-    ///     estimates module and sub module durations from it, which orders the critical path and the progress display. The
+    ///     estimates module and sub module durations from it, which orders the critical path and the progress display. It also keeps
+    ///     the last run of each test project (<see cref="TestProjectHistory" />), which the test shards are split by. The
     ///     <c>History</c> configuration section supplies the defaults; <c>History:Enabled=false</c> turns run history off.
     /// </summary>
     /// <param name="builder">The pipeline builder.</param>
@@ -44,6 +45,7 @@ public static class RocketHistoryExtensions
 
         builder.Services.RemoveAll<RocketHistoryOptions>();
         builder.Services.AddSingleton(options);
+        builder.Services.TryAddSingleton<TestProjectHistory>();
         builder.AddModuleEstimatedTimeProvider<RunHistoryEstimatedTimeProvider>();
 
         if (options.ModuleCache)

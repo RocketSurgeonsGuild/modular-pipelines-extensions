@@ -8,7 +8,8 @@ for each level (`History__Enabled=false`, `IncludeTests__0=test/Slow.Tests/**`).
 Run history is on by default. ModularPipelines writes a report of every run to `.modularpipelines/run-history`, and the library
 estimates each module's duration from it: the median of its last successful runs. The scheduler starts the longest chain of modules
 first with these estimates, and the progress display shows them. Run history only records whole modules, so the last duration of
-each sub module (each test project, below) is kept in `.modularpipelines/estimates`.
+each sub module is kept in `.modularpipelines/estimates`, along with the last run of each test project that the test shards are split
+by (below).
 
 ```yaml
 History:
@@ -92,10 +93,29 @@ The shards are added by the `TestShardsJoint`. A build host that does not apply 
 
 ### How projects are assigned
 
-Projects are placed longest first, each on the shard with the least work so far, using the last duration of each project's sub
-module from `.modularpipelines/estimates` (recorded under `TestSolution` or a shard). A project with no duration counts as the median of
-the others. With no durations at all, projects are dealt round-robin in order of their path. The split depends only on its input, so
-it does not change between runs unless the durations or the projects do.
+The split follows the **last run** of each test project. Whenever `TestSolution` or a shard runs a project, the library records how
+long its `dotnet test` took, whether it passed and when it finished, in `.modularpipelines/estimates/test-projects.json` (under
+`History:EstimatesDirectory`). Each project keeps one entry, replaced by its next run, so the entry is always the newest run of that
+project, wherever it ran.
+
+- Projects are placed longest first, each on the shard with the least work so far, by the duration of their last run.
+- A project whose last run **failed** still counts with that run's duration: it is its most recent run, and a failing project usually
+  fails the same way next time. A run cancelled before the project finished records nothing, so the project keeps its previous entry.
+- A project with no last run (new, renamed, or never finished) counts as the median of the other projects' last runs.
+- With no last run for any project, projects are dealt round-robin in order of their path.
+- Ties are broken by path, so the same last runs and projects always give the same split.
+
+`TestShardPlan` logs the split and what it came from, for example:
+
+```text
+Test projects split between 2 shards by the duration of each project's last run:
+  shard 1 (estimated 95.2s): test/A.Tests/A.Tests.csproj (last run 95.2s)
+  shard 2 (estimated 88.4s): test/B.Tests/B.Tests.csproj (last run 60.1s, failed), test/New.Tests/New.Tests.csproj (no previous run, counted as the median 28.3s)
+```
+
+or `Test projects split between 2 shards round-robin by path: no test project has a previous run`. The record is kept only while run
+history is on (`History:Enabled`); with it off, every split is round-robin. The module estimates above still use the median of past
+runs: they only order the scheduler and the progress display, not the shards.
 
 The split is worked out **once**, by `TestShardPlan`, and reaches the shards as that module's result. The shards never compute it
 themselves: durations recorded while they run would give each a different split, which could run a project twice or not at all.

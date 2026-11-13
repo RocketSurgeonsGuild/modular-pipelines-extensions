@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ModularPipelines.Exceptions;
+using Rocket.Surgery.ModularPipelines.Extensions.History;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -20,7 +21,8 @@ public partial class TestSolution
     ArtifactSettings artifactSettings,
     TestSettings testSettings,
     SolutionSettings settings = null!,
-    TestShardSet? shards = null) : Module<TestSolution.Result?>
+    TestShardSet? shards = null,
+    TestProjectHistory? projectHistory = null) : Module<TestSolution.Result?>
 {
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
         _ => settings is null || !testSettings.IsEnabled
@@ -61,7 +63,7 @@ public partial class TestSolution
         var selected = projects.Where(project => project.IsTestProject && SolutionProjects.IsSelected(project, testSettings)).ToArray();
         LogSelection(context, projects, selected);
 
-        var outcomes = await TestProjectRunner.RunProjectsAsync(context, selected, settings, testSettings, testSettings.RunSettings, cancellationToken);
+        var outcomes = await TestProjectRunner.RunProjectsAsync(context, selected, settings, testSettings, testSettings.RunSettings, projectHistory, cancellationToken);
         return new(null, TestProjectRunner.FindTrxFiles(testSettings.TestsDirectory), binlog, outcomes);
     }
 

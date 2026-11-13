@@ -1,14 +1,21 @@
 using Microsoft.Extensions.Logging;
+using Rocket.Surgery.ModularPipelines.Extensions.History;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>The services a test shard uses, in one parameter so the generated shards stay one line each.</summary>
 [PublicAPI]
-public sealed class TestShardServices(ArtifactSettings artifactSettings, TestSettings testSettings, SolutionSettings? solutionSettings = null)
+public sealed class TestShardServices
+(
+    ArtifactSettings artifactSettings,
+    TestSettings testSettings,
+    SolutionSettings? solutionSettings = null,
+    TestProjectHistory? projectHistory = null)
 {
     internal ArtifactSettings ArtifactSettings => artifactSettings;
     internal TestSettings TestSettings => testSettings;
     internal SolutionSettings? SolutionSettings => solutionSettings;
+    internal TestProjectHistory? ProjectHistory => projectHistory;
 }
 
 /// <summary>
@@ -64,7 +71,7 @@ public abstract class TestShardModule(TestShardServices services, int number) : 
             await SolutionProjects.WriteDefaultRunSettingsAsync(runSettings, plan.Projects, testSettings, cancellationToken);
         }
 
-        var outcomes = await TestProjectRunner.RunProjectsAsync(context, projects, settings, testSettings, runSettings, cancellationToken);
+        var outcomes = await TestProjectRunner.RunProjectsAsync(context, projects, settings, testSettings, runSettings, services.ProjectHistory, cancellationToken);
 
         return TestProjectRunner.ThrowIfAnyFailed(
             new(null, [.. outcomes.SelectMany(outcome => TestProjectRunner.FindTrxFiles(outcome.ResultsDirectory))], binlog, outcomes)

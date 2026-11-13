@@ -7,8 +7,8 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///     Generates code coverage artifacts from cobertura files emitted by test execution.
 /// </summary>
 [DependsOn<TestSolutionModule>]
-public partial class GenerateCodeCoverageReports
-(TestSettings testSettings) : Module<GenerateCodeCoverageReports.Result>
+public partial class GenerateCodeCoverageReportsModule
+(TestSettings testSettings) : Module<GenerateCodeCoverageReportsModule.Result>
 {
     private const string ReportGeneratorCommandName = "reportgenerator";
 
@@ -59,7 +59,15 @@ public partial class GenerateCodeCoverageReports
                 context,
                 reportsArgument,
                 coverageSummaryDirectory.Path,
-                "Badges;HtmlSummary;TextSummary;MarkdownSummary;MarkdownSummaryGithub",
+                "HtmlSummary;TextSummary;MarkdownSummary;MarkdownSummaryGithub",
+                cancellationToken
+            ),
+            // Badges get their own folder so a docs site (see DocsModule) can publish them without pulling in the rest of the summary.
+            RunReportGeneratorAsync(
+                context,
+                reportsArgument,
+                coverageBadgeDirectory.Path,
+                "Badges",
                 cancellationToken
             )
         );
@@ -77,6 +85,7 @@ public partial class GenerateCodeCoverageReports
             coverageDirectory,
             coverageReportDirectory,
             coverageSummaryDirectory,
+            coverageBadgeDirectory,
             inputReports
         );
     }
@@ -113,11 +122,16 @@ public partial class GenerateCodeCoverageReports
     /// <param name="CoverageDirectory">The directory containing consolidated coverage artifacts.</param>
     /// <param name="CoverageReportDirectory">The directory containing the generated HTML report.</param>
     /// <param name="CoverageSummaryDirectory">The directory containing generated summary outputs.</param>
+    /// <param name="CoverageBadgeDirectory">
+    ///     The directory containing the generated coverage badge SVGs. <see cref="DocsModule" /> publishes this
+    ///     folder alongside the built docs site so the badges are available on GitHub Pages.
+    /// </param>
     /// <param name="InputReports">The discovered cobertura input files used as report sources.</param>
     public record Result
     (
         FolderPath CoverageDirectory,
         FolderPath CoverageReportDirectory,
         FolderPath CoverageSummaryDirectory,
+        FolderPath CoverageBadgeDirectory,
         ImmutableList<FilePath> InputReports);
 }

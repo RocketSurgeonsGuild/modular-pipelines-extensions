@@ -29,7 +29,7 @@ public class TestSettings(SharedSettings sharedSettings, ArtifactSettings artifa
 /// <summary>How <see cref="TestSolutionModule" /> runs the tests.</summary>
 public enum TestMode
 {
-    /// <summary>One <c>dotnet test</c> over the solution (or a filter of it without <see cref="TestSettings.ExcludeTests" />).</summary>
+    /// <summary>One <c>dotnet test</c> over the solution.</summary>
     Solution,
 
     /// <summary>

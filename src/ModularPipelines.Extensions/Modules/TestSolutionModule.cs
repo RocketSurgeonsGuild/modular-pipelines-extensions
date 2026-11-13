@@ -283,10 +283,4 @@ public partial class TestSolutionModule
 
     [LoggerMessage(LogLevel.Information, "Running {Queue}")]
     static partial void LogRunningQueue(ILogger logger, string queue);
-
-    [LoggerMessage(LogLevel.Information, "Leaving {Count} test projects out of the test run: {Projects}")]
-    static partial void LogLeavingCountTestProjectsOutOfTheTestRunProjects(ILogger logger, int count, string projects);
-
-    [LoggerMessage(LogLevel.Information, "Leaving {Count} projects out of the test run: {Projects}")]
-    static partial void LogLeavingCountProjectsOutOfTheTestRunProjects(ILogger logger, int count, string projects);
 }

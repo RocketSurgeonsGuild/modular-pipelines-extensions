@@ -1,0 +1,6 @@
+<Project>
+    <ItemGroup>
+        <!-- ModulesJoint registers a build host's modules through Specular, which ModularPipelines' MP0013 ("module not registered") cannot see. -->
+        <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)Rocket.Surgery.ModularPipelines.Extensions.globalconfig" />
+    </ItemGroup>
+</Project>

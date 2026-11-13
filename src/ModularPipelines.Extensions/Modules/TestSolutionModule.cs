@@ -56,10 +56,17 @@ public partial class TestSolutionModule
     private async Task<Result> RunProjectsAsync(IModuleContext context, FilePath binlog, CancellationToken cancellationToken)
     {
         var projects = ( await context.GetModule<SolutionProjectsModule>() ).ValueOrDefault ?? [];
+        var testProjects = projects.Where(project => project.IsTestProject).ToArray();
+        WarnAboutUnmatchedPatterns(context, testProjects.Select(project => testSettings.GetRootRelativePath(project.ProjectPath)));
+        var excluded = testProjects.Where(project => testSettings.IsExcluded(project.ProjectPath)).ToArray();
+        if (excluded.Length > 0 && context.Logger.IsEnabled(LogLevel.Information))
+        {
+            LogExcluding(context.Logger, excluded.Length, string.Join(", ", excluded.Select(project => testSettings.GetRootRelativePath(project.ProjectPath))));
+        }
 
         var moduleId = ModuleId.FromType(GetType());
         var queue = TestQueue.Order(
-            projects.Where(project => project.IsTestProject),
+            testProjects.Except(excluded),
             await GetEstimatesAsync(context, moduleId, cancellationToken)
         );
         var fastLane = TestQueue.UsesFastLane(queue, testSettings.Parallelism);
@@ -231,18 +238,35 @@ public partial class TestSolutionModule
     /// </summary>
     private async Task<FilePath> SolutionToTest(IModuleContext context, CancellationToken cancellationToken)
     {
+        if (testSettings.ExcludeTests.Count == 0) return settings.Solution;
+
         var serializer = SolutionSerializers.GetSerializerByMoniker(settings.Solution.Path)
          ?? throw new InvalidOperationException($"Not a solution file: {settings.Solution.Path}");
         var model = await serializer.OpenAsync(settings.Solution.Path, cancellationToken);
         var solutionDirectory = Path.GetDirectoryName(settings.Solution.Path)!;
 
         var included = new List<string>();
+        var excluded = new List<string>();
+        var all = new List<string>();
         foreach (var project in model.SolutionProjects)
         {
             // the path relative to the solution is what a solution filter lists; the patterns are relative to the root directory
             var projectPath = project.FilePath.Replace('\\', '/');
-            var fromRoot = Path.GetRelativePath(sharedSettings.RootDirectory.Path, Path.GetFullPath(Path.Combine(solutionDirectory, projectPath))).Replace('\\', '/');
+            var fullPath = new FilePath(Path.GetFullPath(Path.Combine(solutionDirectory, projectPath)));
+            all.Add(testSettings.GetRootRelativePath(fullPath));
+            if (testSettings.IsExcluded(fullPath))
+            {
+                excluded.Add(testSettings.GetRootRelativePath(fullPath));
+                continue;
+            }
+
             included.Add(projectPath);
+        }
+
+        WarnAboutUnmatchedPatterns(context, all);
+        if (excluded.Count > 0 && context.Logger.IsEnabled(LogLevel.Information))
+        {
+            LogExcluding(context.Logger, excluded.Count, string.Join(", ", excluded));
         }
 
         var filter = testSettings.TestArtifactsDirectory.GetFile($"{Path.GetFileNameWithoutExtension(settings.Solution.Name)}.tests.slnf");
@@ -280,6 +304,21 @@ public partial class TestSolutionModule
     /// <param name="CommandResult">The command's result, when it ran.</param>
     /// <param name="Error">Why it failed, or <see langword="null" />.</param>
     public record ProjectResult(string Name, FilePath Project, FolderPath ResultsDirectory, CommandResult? CommandResult, string? Error);
+
+    private void WarnAboutUnmatchedPatterns(IModuleContext context, IEnumerable<string> rootRelativePaths)
+    {
+        var paths = rootRelativePaths.ToArray();
+        foreach (var pattern in testSettings.ExcludeTests.Where(pattern => !paths.Any(path => TestSettings.Matches(pattern, path))))
+        {
+            LogUnmatchedPattern(context.Logger, pattern);
+        }
+    }
+
+    [LoggerMessage(LogLevel.Information, "Leaving {Count} test projects out of the test run: {Projects}")]
+    static partial void LogExcluding(ILogger logger, int count, string projects);
+
+    [LoggerMessage(LogLevel.Warning, "ExcludeTests pattern {Pattern} matches no project in the solution")]
+    static partial void LogUnmatchedPattern(ILogger logger, string pattern);
 
     [LoggerMessage(LogLevel.Information, "Running {Queue}")]
     static partial void LogRunningQueue(ILogger logger, string queue);

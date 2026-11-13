@@ -44,11 +44,19 @@ internal static class TestQueue
     public static string GetName(SolutionProjectsModule.Project project) => project.AssemblyName;
 
     /// <summary>
-    ///     Whether the first slot is a fast lane: there is more than one slot, more projects than slots (otherwise every project starts
-    ///     at once), and the estimates say the run finishes no later with it than with every slot taking the longest.
+    ///     Whether the first slot is a fast lane: there is more than one slot, more projects with a previous run than slots (otherwise
+    ///     every project starts at once, or the estimates have too little to compare), and the estimates say the run finishes no later with
+    ///     it than with every slot taking the longest.
     /// </summary>
+    /// <remarks>
+    ///     Without enough history both estimates are zero and would always pick the fast lane, which can start a long project with no
+    ///     history late.
+    /// </remarks>
     public static bool UsesFastLane(IReadOnlyCollection<TestQueueEntry> queue, int parallelism) =>
-        parallelism > 1 && queue.Count > parallelism && EstimateDuration(queue, parallelism, true) <= EstimateDuration(queue, parallelism, false);
+        parallelism > 1
+     && queue.Count > parallelism
+     && queue.Count(entry => entry.Estimate.HasValue) > parallelism
+     && EstimateDuration(queue, parallelism, true) <= EstimateDuration(queue, parallelism, false);
 
     /// <summary>
     ///     How long the queue should take with <paramref name="parallelism" /> slots, as each free slot takes its next project, the first

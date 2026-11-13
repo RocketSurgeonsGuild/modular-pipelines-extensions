@@ -76,6 +76,21 @@ public class TestQueueTests
     }
 
     [Test]
+    public async Task Has_no_fast_lane_without_enough_history_to_compare()
+    {
+        // Nothing has run before: both estimates are zero, which used to pick the fast lane and start a long project late.
+        var none = TestQueue.Order([Project("A"), Project("B"), Project("C"), Project("D"), Project("E")], Estimates());
+        // Only two of five have run: with three slots, the estimates cannot say which order finishes first.
+        var some = TestQueue.Order(
+            [Project("A"), Project("B"), Project("C"), Project("D"), Project("E")],
+            Estimates(("A", 60), ("E", 5))
+        );
+
+        await Assert.That(TestQueue.UsesFastLane(none, 2)).IsFalse();
+        await Assert.That(TestQueue.UsesFastLane(some, 3)).IsFalse();
+    }
+
+    [Test]
     public async Task Leaves_out_the_fast_lane_when_it_would_finish_later()
     {
         // Three slots. With the fast lane, A (0-60) and B (0-50) take the longest while it runs the five 10s from 0 to 50 and then C
@@ -133,13 +148,13 @@ public class TestQueueTests
     }
 
     [Test]
-    public async Task Runs_tests_per_project_on_half_the_processors_by_default()
+    public async Task Runs_tests_per_project_on_every_processor_by_default()
     {
         var configuration = new ConfigurationBuilder().Build();
         var settings = new TestSettings(null!, null!, configuration);
 
         await Assert.That(settings.Mode).IsEqualTo(TestMode.PerProject);
-        await Assert.That(settings.Parallelism).IsEqualTo(Math.Max(1, Environment.ProcessorCount / 2));
+        await Assert.That(settings.Parallelism).IsEqualTo(Math.Max(1, Environment.ProcessorCount));
     }
 
     [Test]
@@ -152,6 +167,30 @@ public class TestQueueTests
 
         await Assert.That(settings.Mode).IsEqualTo(TestMode.Solution);
         await Assert.That(settings.Parallelism).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Excludes_test_projects_by_their_path_from_the_root_directory()
+    {
+        var configuration = new ConfigurationBuilder()
+                           .AddInMemoryCollection([new("RootDirectory", "/repo"), new("ExcludeTests:0", "test/Slow*/**"), new("ExcludeTests:1", "**/*.Integration.csproj")])
+                           .Build();
+        var settings = new TestSettings(new(configuration), null!, configuration);
+
+        await Assert.That(settings.ExcludeTests.Count).IsEqualTo(2);
+        await Assert.That(settings.IsExcluded(new("/repo/test/Slow.Tests/Slow.Tests.csproj"))).IsTrue();
+        await Assert.That(settings.IsExcluded(new("/repo/test/Api/Api.Integration.csproj"))).IsTrue();
+        await Assert.That(settings.IsExcluded(new("/repo/test/Fast.Tests/Fast.Tests.csproj"))).IsFalse();
+    }
+
+    [Test]
+    public async Task Excludes_nothing_by_default()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var settings = new TestSettings(null!, null!, configuration);
+
+        await Assert.That(settings.ExcludeTests).IsEmpty();
+        await Assert.That(settings.IsExcluded(new("/repo/test/A/A.csproj"))).IsFalse();
     }
 
     private static string Describe(IEnumerable<TestQueueEntry> queue) =>

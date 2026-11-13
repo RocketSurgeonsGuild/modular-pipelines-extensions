@@ -200,7 +200,7 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
                 Get(item, "IsTestProject"),
                 // Only the outer build of a multi-targeted project lists its frameworks without one chosen.
                 framework is { Length: > 0 } || frameworks is not { Length: > 0 } ? null : all.FirstOrDefault(),
-                string.Join(';', all)
+                string.Join(';', all.AsSpan())
             );
         }
 

@@ -19,7 +19,6 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 [DependsOn<SolutionProjectsModule>]
 public partial class TestSolutionModule
 (
-    SharedSettings sharedSettings,
     ArtifactSettings artifactSettings,
     TestSettings testSettings,
     SolutionSettings settings = null!,

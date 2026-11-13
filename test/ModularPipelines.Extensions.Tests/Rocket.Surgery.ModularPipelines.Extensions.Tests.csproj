@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net11.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Direct references: the Dovetail and Specular generators, and the ConfigureDovetail host, do not flow through a project reference. -->
+        <PackageReference Include="Joinery.Dovetail.ModularPipelines" />
+        <PackageReference Include="Specular" />
+        <PackageReference Include="TUnit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
+    </ItemGroup>
+</Project>

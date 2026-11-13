@@ -10,7 +10,7 @@ public partial class ReadmeUpdater
 (
 ReadmeSettings readmeSettings,
     ArtifactSettings artifactSettings,
-    SolutionSettings settings) : Module<ReadmeUpdater.Result>
+    SolutionSettings settings) : Module<ReadmeUpdater.Result?>
 {
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
@@ -49,7 +49,7 @@ ReadmeSettings readmeSettings,
             var newSectionContent = await section.Process(config, readmeSettings.References, context);
             ranges.Add(
                 (sectionStart.Index + sectionStart.Length,
-                  sectionEnd.Index - (sectionStart.Index + sectionStart.Length), newSectionContent)
+                  sectionEnd.Index - ( sectionStart.Index + sectionStart.Length ), newSectionContent)
             );
         }
 

@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -10,12 +9,13 @@ public partial class PackSolution
     ArtifactSettings artifactSettings,
     SolutionSettings settings) : Module<PackSolution.Result>
 {
-    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var nugetFolder = artifactSettings.ArtifactsDirectory.GetFolder("nuget").EnsureExists();
         var result = await context
-                          .DotNet()
-                          .Pack(
+                          .Tools
+                          .DotNet
+                          .PackAsync(
                                new()
                                {
                                    ProjectSolution = settings.Solution,
@@ -29,11 +29,11 @@ public partial class PackSolution
                                cancellationToken
                            );
 
-        var packages = nugetFolder.GetFiles(z => z.Extension == "nupkg").ToImmutableList();
-        var symbols = nugetFolder.GetFiles(z => z.Extension == "snupkg").ToImmutableList();
+        var packages = nugetFolder.GetFiles(z => z.Extension == ".nupkg").ToImmutableList();
+        var symbols = nugetFolder.GetFiles(z => z.Extension == ".snupkg").ToImmutableList();
 
         return new(result, packages, symbols);
     }
 
-    public record Result(CommandResult CommandResult, ImmutableList<File> Packages, ImmutableList<File> Symbols);
+    public record Result(CommandResult CommandResult, ImmutableList<FilePath> Packages, ImmutableList<FilePath> Symbols);
 }

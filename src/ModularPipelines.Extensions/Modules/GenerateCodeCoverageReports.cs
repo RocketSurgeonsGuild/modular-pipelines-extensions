@@ -1,7 +1,5 @@
 using System.Collections.Immutable;
-using ModularPipelines.FileSystem;
 using Rocket.Surgery.ModularPipelines.Extensions.Mise;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -14,10 +12,10 @@ public partial class GenerateCodeCoverageReports
 {
     private const string ReportGeneratorCommandName = "reportgenerator";
 
-    protected override ModuleConfiguration Configure() => ModuleConfiguration
-                                                         .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(!HasInputReports(), "No cobertura coverage reports were found"))
-                                                         .Build();
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
+        _ => SkipDecision.When(!HasInputReports(),
+            "No cobertura coverage reports were found")
+    );
 
     /// <summary>
     ///     Executes report generation for coverage artifacts after tests complete.
@@ -26,7 +24,7 @@ public partial class GenerateCodeCoverageReports
     /// <param name="cancellationToken">The cancellation token for command execution.</param>
     /// <returns>The generated report locations and discovered input report files.</returns>
     /// <exception cref="InvalidOperationException">Thrown when reportgenerator is not installed in the local tool manifest.</exception>
-    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var coverageDirectory = await testSettings.CoverageDirectory.CreateAsync(cancellationToken);
         var coverageReportDirectory = coverageDirectory.GetFolder("report");
@@ -90,7 +88,8 @@ public partial class GenerateCodeCoverageReports
         string reportTypes,
         CancellationToken cancellationToken
     ) => context
-        .GetService<IMise>()
+        .Tools
+        .Mise
         .Execute(
              [
                  ReportGeneratorCommandName,
@@ -117,8 +116,8 @@ public partial class GenerateCodeCoverageReports
     /// <param name="InputReports">The discovered cobertura input files used as report sources.</param>
     public record Result
     (
-        Folder CoverageDirectory,
-        Folder CoverageReportDirectory,
-        Folder CoverageSummaryDirectory,
-        ImmutableList<File> InputReports);
+        FolderPath CoverageDirectory,
+        FolderPath CoverageReportDirectory,
+        FolderPath CoverageSummaryDirectory,
+        ImmutableList<FilePath> InputReports);
 }

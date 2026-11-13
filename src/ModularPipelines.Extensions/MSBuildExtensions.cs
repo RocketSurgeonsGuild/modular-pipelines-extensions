@@ -1,11 +1,10 @@
 using ModularPipelines.Options;
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
 internal static class MSBuildExtensions
 {
-    public static T BinlogTo<T>(this T options, IPipelineContext context, File log) where T : CommandLineToolOptions
+    public static T BinlogTo<T>(this T options, IPipelineContext context, FilePath log) where T : CommandLineToolOptions
     {
         var args = options.Arguments?.ToList() ?? [];
         args.Add($"/bl:\"{log}\"");

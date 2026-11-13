@@ -2,15 +2,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : Module<DownloadPackageIconModule.Result>
+public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : Module<DownloadPackageIconModule.Result?>
 {
-    protected override ModuleConfiguration Configure() => ModuleConfiguration
-                                                         .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(
-                                                             sharedSettings.PackageIconFile.Exists,
-                                                             "Package icon already staged"
-                                                         ))
-                                                         .Build();
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
+        _ => SkipDecision.When(sharedSettings.PackageIconFile.Exists,
+            "Package icon already staged")
+    );
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
@@ -27,9 +24,7 @@ public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : 
 
         LogDownloadingPackageIcon(context.Logger, url, destination);
 
-        using var http = new HttpClient();
-        var bytes = await http.GetByteArrayAsync(url, cancellationToken);
-        await File.WriteAllBytesAsync(destination, bytes, cancellationToken);
+        await context.Network.Downloader.DownloadFileAsync(new(url) { SavePath = destination, Overwrite = true }, cancellationToken);
 
         LogPackageIconStaged(context.Logger, destination);
         return new(destination);

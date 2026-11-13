@@ -43,12 +43,27 @@ jobs:
                   cache_key_prefix: mise-v2
                   experimental: true
                   github_token: ${{ secrets.GITHUB_TOKEN }}
+            - name: 🕰️ Restore run history
+              # Run history, the duration estimates and the module cache live in .modularpipelines/, which a new runner starts
+              # without. Every run restores the newest one saved from main; only main saves.
+              uses: actions/cache/restore@v6
+              with:
+                  path: .modularpipelines
+                  key: modularpipelines-${{ github.workflow }}-main-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      modularpipelines-${{ github.workflow }}-main-
             - name: ⚙️ Build
               id: build
               run: |
                   mise run build
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: 🕰️ Save run history
+              if: always() && github.ref == 'refs/heads/main'
+              uses: actions/cache/save@v6
+              with:
+                  path: .modularpipelines
+                  key: modularpipelines-${{ github.workflow }}-main-${{ github.run_id }}-${{ github.run_attempt }}
             - name: 🏺 Save GitHub event
               if: always()
               run: cp "$GITHUB_EVENT_PATH" artifacts/event.json || true
@@ -63,13 +78,13 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: test data
-                  path: artifacts/tests/
+                  path: artifacts/logs/tests/
             - name: 🏺 Publish coverage data
               if: always()
               uses: actions/upload-artifact@v7
               with:
                   name: coverage
-                  path: artifacts/coverage/
+                  path: artifacts/logs/coverage/
             - name: 🏺 Publish NuGet Packages
               if: always()
               uses: actions/upload-artifact@v7

@@ -1,4 +1,3 @@
-using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
@@ -10,12 +9,13 @@ public partial class BuildSolution
     ArtifactSettings artifactSettings,
     SolutionSettings settings) : Module<BuildSolution.Result>
 {
-    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var binlog = artifactSettings.LogsDirectory.GetFile("build.binlog");
         var result = await context
-                          .DotNet()
-                          .Build(
+                          .Tools
+                          .DotNet
+                          .BuildAsync(
                                new DotNetBuildOptions
                                {
                                    ProjectSolution = settings.Solution,
@@ -32,5 +32,5 @@ public partial class BuildSolution
         return new(result, binlog);
     }
 
-    public record Result(CommandResult CommandResult, File Binlog);
+    public record Result(CommandResult CommandResult, FilePath Binlog);
 }

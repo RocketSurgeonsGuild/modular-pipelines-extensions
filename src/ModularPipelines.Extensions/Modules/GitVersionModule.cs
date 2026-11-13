@@ -1,15 +1,14 @@
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using ModularPipelines.Git;
-using ModularPipelines.Git.Models;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<GitVersionModule.Result>
 {
-    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        var info = await gitVersioning.GetGitVersioningInformation();
+        var info = await gitVersioning.GetVersioningInformationAsync(cancellationToken);
 
         SetEnvironmentVariables(info);
 
@@ -35,7 +34,7 @@ public partial class GitVersionModule(IGitVersioning gitVersioning) : Module<Git
         public string? PreReleaseTagWithDash => Info.PreReleaseTagWithDash;
         public bool IsRelease => string.IsNullOrEmpty(Info.PreReleaseTagWithDash);
 
-        public IEnumerable<KeyValue> Properties { get; } = typeof(GitVersionInformation)
+        public IReadOnlyList<KeyValue> Properties { get; } = typeof(GitVersionInformation)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(p => new KeyValue(p.Name, p.GetValue(Info)?.ToString() ?? ""))
             .ToArray();

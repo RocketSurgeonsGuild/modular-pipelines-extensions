@@ -2,25 +2,21 @@ using System.Collections.Immutable;
 using System.Xml.Linq;
 using GitignoreParserNet;
 using Microsoft.Extensions.Logging;
-using ModularPipelines.Options;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSettings) : Module<RemoveUnusedDependenciesModule.Result>
 {
-    protected override ModuleConfiguration Configure() => ModuleConfiguration
-                                                         .Create()
-                                                         .WithSkipWhen(() => SkipDecision.Of(
-                                                             IsOnCI(),
-                                                             "Only runs on local builds"
-                                                         ))
-                                                         .Build();
+    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
+        _ => SkipDecision.When(IsOnCI(),
+            "Only runs on local builds")
+    );
 
     private static bool IsOnCI() =>
         Environment.GetEnvironmentVariable("CI") is not null ||
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") is not null;
 
-    protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
+    protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var matcher = await sharedSettings.GetMatcher(m => m
         .AddInclude("**/*.csproj")
@@ -118,5 +114,3 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
     [LoggerMessage(EventId = 5, Level = LogLevel.Information, Message = "Removed {Count} unused/duplicate entries across {Files} files")]
     private static partial void LogRemovedUnusedDuplicateEntries(ILogger logger, int count, int files);
 }
-
-file record GitLsFilesOptions : CommandLineToolOptions;

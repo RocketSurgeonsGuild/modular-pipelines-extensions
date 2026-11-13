@@ -26,10 +26,10 @@ public class SolutionProjectsTests
         var info = SolutionProjectsModule.Parse(json);
 
         await Assert.That(info.Count).IsEqualTo(3);
-        await Assert.That(info[Path.GetFullPath("/repo/src/Lib/Lib.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Rocket.Lib", "", null));
+        await Assert.That(info[Path.GetFullPath("/repo/src/Lib/Lib.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Rocket.Lib", "", null, "net11.0"));
         // Only a multi-targeted project's outer build needs asking again, with its first framework chosen.
-        await Assert.That(info[Path.GetFullPath("/repo/test/Multi/Multi.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Multi", "", "net10.0"));
-        await Assert.That(info[Path.GetFullPath("/repo/test/Single/Single.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Single", "true", null));
+        await Assert.That(info[Path.GetFullPath("/repo/test/Multi/Multi.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Multi", "", "net10.0", "net10.0;net11.0"));
+        await Assert.That(info[Path.GetFullPath("/repo/test/Single/Single.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Single", "true", null, "net11.0"));
     }
 
     [Test]

@@ -3,11 +3,27 @@ using Humanizer;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-/// <summary>A test project in the order <see cref="TestSolutionModule" /> queues them, with what its history says it takes.</summary>
+/// <summary>
+///     A test project, or one target framework of it, in the order <see cref="TestSolutionModule" /> queues them, with what its history
+///     says it takes.
+/// </summary>
 /// <param name="Project">The test project.</param>
 /// <param name="Name">Its sub module name, which its history is kept under.</param>
 /// <param name="Estimate">The median of its last runs, or <see langword="null" /> when it has none.</param>
-public record TestQueueEntry(SolutionProjectsModule.Project Project, string Name, TimeSpan? Estimate);
+/// <param name="Framework">The target framework it tests, or <see langword="null" /> for every framework of the project at once.</param>
+public record TestQueueEntry(SolutionProjectsModule.Project Project, string Name, TimeSpan? Estimate, string? Framework = null)
+{
+    /// <summary>The folder, under the test artifacts, its TRX and coverage files go to.</summary>
+    public string ResultsFolder => Framework is null ? Project.AssemblyName : Path.Combine(Project.AssemblyName, Framework);
+
+    /// <summary>The one framework the run tests: <see cref="Framework" />, or the project's only one; <see langword="null" /> for several.</summary>
+    public string? EffectiveFramework => Framework ?? ( Project.Frameworks is [var only] ? only : null );
+}
+
+/// <summary>A test project, and the target framework to test when only one of several is.</summary>
+/// <param name="Project">The test project.</param>
+/// <param name="Framework">The framework, or <see langword="null" /> for all of them at once.</param>
+public record TestTarget(SolutionProjectsModule.Project Project, string? Framework = null);
 
 /// <summary>
 ///     Orders the test projects so a fixed number of them running at once finishes as early as it can, and gives the fast ones a slot of
@@ -32,16 +48,74 @@ internal static class TestQueue
     /// <param name="projects">The test projects to run.</param>
     /// <param name="estimates">The estimates by sub module name.</param>
     public static ImmutableArray<TestQueueEntry> Order(IEnumerable<SolutionProjectsModule.Project> projects, IReadOnlyDictionary<string, TimeSpan> estimates) =>
+        Order(projects.Select(project => new TestTarget(project)), estimates);
+
+    /// <summary>Orders the test sub modules, reading each one's estimate by its sub module name.</summary>
+    /// <param name="targets">The projects, or projects and frameworks, to run.</param>
+    /// <param name="estimates">The estimates by sub module name.</param>
+    /// <param name="priority">
+    ///     Where a sub module with no history goes among the others with none, lower first (see <see cref="TestSettings.Order" />); path
+    ///     order when <see langword="null" />.
+    /// </param>
+    public static ImmutableArray<TestQueueEntry> Order(
+        IEnumerable<TestTarget> targets,
+        IReadOnlyDictionary<string, TimeSpan> estimates,
+        Func<SolutionProjectsModule.Project, int>? priority = null
+    ) =>
     [
-        .. projects
-          .Select(project => new TestQueueEntry(project, GetName(project), estimates.TryGetValue(GetName(project), out var estimate) ? estimate : null))
+        .. targets
+          .Select(target =>
+               {
+                   var name = GetName(target.Project, target.Framework);
+                   return new TestQueueEntry(target.Project, name, estimates.TryGetValue(name, out var estimate) ? estimate : null, target.Framework);
+               }
+           )
           .OrderBy(entry => entry.Estimate.HasValue)
+          .ThenBy(entry => entry.Estimate.HasValue || priority is null ? 0 : priority(entry.Project))
           .ThenByDescending(entry => entry.Estimate ?? TimeSpan.Zero)
-          .ThenBy(entry => entry.Project.ProjectPath.Path, StringComparer.Ordinal),
+          .ThenBy(entry => entry.Project.ProjectPath.Path, StringComparer.Ordinal)
+          .ThenBy(entry => entry.Framework, StringComparer.Ordinal),
     ];
 
     /// <summary>The sub module name of a project, which is also the key its history is kept under.</summary>
     public static string GetName(SolutionProjectsModule.Project project) => project.AssemblyName;
+
+    /// <summary>The sub module name of a project, or of one of its frameworks, which is also the key its history is kept under.</summary>
+    public static string GetName(SolutionProjectsModule.Project project, string? framework) =>
+        framework is null ? project.AssemblyName : $"{project.AssemblyName} [{framework}]";
+
+    /// <summary>
+    ///     What to run of each test project: one target per framework when <paramref name="perFramework" /> is set and the project has
+    ///     several, only the <paramref name="frameworks" /> asked for (a project with none of them is left out), and the project as a whole
+    ///     otherwise.
+    /// </summary>
+    public static IEnumerable<TestTarget> Expand(IEnumerable<SolutionProjectsModule.Project> projects, bool perFramework, IReadOnlyCollection<string> frameworks)
+    {
+        foreach (var project in projects)
+        {
+            var all = project.Frameworks;
+            var selected = frameworks.Count == 0 ? all : [.. all.Where(framework => frameworks.Contains(framework, StringComparer.OrdinalIgnoreCase))];
+            if (all.Length > 0 && selected.Length == 0) continue;
+
+            if (( perFramework && selected.Length > 1 ) || selected.Length < all.Length)
+            {
+                foreach (var framework in selected) yield return new(project, framework);
+            }
+            else
+            {
+                yield return new(project);
+            }
+        }
+    }
+
+    /// <summary>The targets of one shard: every <see cref="TestShard.Count" />th in path and framework order, so the split needs no history.</summary>
+    public static IEnumerable<TestTarget> InShard(IEnumerable<TestTarget> targets, TestShard? shard) =>
+        shard is null
+            ? targets
+            : targets
+             .OrderBy(target => target.Project.ProjectPath.Path, StringComparer.Ordinal)
+             .ThenBy(target => target.Framework, StringComparer.Ordinal)
+             .Where((_, index) => index % shard.Count == shard.Index - 1);
 
     /// <summary>
     ///     Whether the first slot is a fast lane: there is more than one slot, more projects with a previous run than slots (otherwise

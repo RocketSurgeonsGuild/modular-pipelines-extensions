@@ -39,7 +39,12 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
     /// <param name="ProjectPath">The path the solution lists it under.</param>
     /// <param name="AssemblyName">The assembly it builds.</param>
     /// <param name="IsTestProject">Whether it is a test project.</param>
-    public record Project(FilePath ProjectPath, string AssemblyName, bool IsTestProject);
+    /// <param name="TargetFrameworks">The frameworks it targets, in the order it lists them; empty when MSBuild did not say.</param>
+    public record Project(FilePath ProjectPath, string AssemblyName, bool IsTestProject, ImmutableArray<string> TargetFrameworks = default)
+    {
+        /// <summary>The frameworks it targets, never default.</summary>
+        public ImmutableArray<string> Frameworks => TargetFrameworks.IsDefault ? [] : TargetFrameworks;
+    }
 
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(_ => settings is null
         ? SkipDecision.Skip("No solution was provided")
@@ -82,7 +87,8 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
                        return new Project(
                            path,
                            info?.AssemblyName is { Length: > 0 } assemblyName ? assemblyName : path.NameWithoutExtension,
-                           IsTrue(info?.IsTestProject)
+                           IsTrue(info?.IsTestProject),
+                           SplitFrameworks(info?.Frameworks)
                        );
                    }
                )
@@ -91,6 +97,9 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
     }
 
     private static bool IsTrue(string? value) => string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+
+    private static ImmutableArray<string> SplitFrameworks(string? frameworks) =>
+        frameworks is { Length: > 0 } ? [.. frameworks.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase)] : [];
 
     /// <summary>Evaluates the projects, each with its target framework when one is given, in one MSBuild process.</summary>
     /// <returns>What each project said, by its full path; a project without the common targets (no SDK) is left out.</returns>
@@ -184,13 +193,14 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
             if (path is not { Length: > 0 }) continue;
 
             var frameworks = Get(item, "TargetFrameworks");
+            var framework = Get(item, "TargetFramework");
+            var all = SplitFrameworks(frameworks is { Length: > 0 } ? frameworks : framework);
             results[Path.GetFullPath(path)] = new(
                 Get(item, "AssemblyName"),
                 Get(item, "IsTestProject"),
                 // Only the outer build of a multi-targeted project lists its frameworks without one chosen.
-                Get(item, "TargetFramework") is { Length: > 0 } || frameworks is not { Length: > 0 }
-                    ? null
-                    : frameworks.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault()
+                framework is { Length: > 0 } || frameworks is not { Length: > 0 } ? null : all.FirstOrDefault(),
+                string.Join(';', all)
             );
         }
 
@@ -236,7 +246,8 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
     /// <param name="AssemblyName">Its assembly name.</param>
     /// <param name="IsTestProject">Its <c>IsTestProject</c> property.</param>
     /// <param name="FirstTargetFramework">The first of its target frameworks when it is multi-targeted and none was chosen.</param>
-    internal record ProjectInfo(string? AssemblyName, string? IsTestProject, string? FirstTargetFramework);
+    /// <param name="Frameworks">Every framework it targets, separated by <c>;</c>.</param>
+    internal record ProjectInfo(string? AssemblyName, string? IsTestProject, string? FirstTargetFramework, string Frameworks = "");
 
     [LoggerMessage(LogLevel.Warning, "Evaluating {Count} projects failed, trying once more:\n{Output}")]
     private static partial void LogEvaluationRetrying(ILogger logger, int count, string output);

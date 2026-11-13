@@ -43,6 +43,16 @@ jobs:
                   cache_key_prefix: mise-v2
                   experimental: true
                   github_token: ${{ secrets.GITHUB_TOKEN }}
+            - name: 🕰️ Restore run history
+              # Run history and the duration estimates made from it live in .modularpipelines/, which a new runner starts without.
+              # Each run saves a new entry and restores the newest one of its branch, or else of main.
+              uses: actions/cache@v6
+              with:
+                  path: .modularpipelines
+                  key: modularpipelines-${{ github.workflow }}-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      modularpipelines-${{ github.workflow }}-${{ github.ref_name }}-
+                      modularpipelines-${{ github.workflow }}-main-
             - name: ⚙️ Build
               id: build
               run: |

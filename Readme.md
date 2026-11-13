@@ -51,6 +51,7 @@ The library's joints:
 | `ModulesJoint`              | Adds every module class of the build host and its references, as Specular found them.                                     |
 | `ServiceRegistrationsJoint` | Registers the classes marked `[ServiceRegistration]` (the settings classes) through Specular.                             |
 | `BuildScriptsRootJoint`     | Reads `appsettings.json`/`.yaml`/`.yml`, `appsettings.{Environment}.*` and `appsettings.local.*` from the scripts folder. |
+| `RunHistoryJoint`           | Keeps run history under the repository and estimates module durations from it (see below).                                |
 
 **Settings files.** `BuildScriptsRootJoint` reads them from the folder in the `BuildScriptsRoot` context value (above, the
 `BuildScriptsRoot` MSBuild property set in `build/Directory.Build.props` and exposed through `ProjectProperty`), or else from the folder
@@ -65,6 +66,47 @@ ModularPipelines' own `--skip-module` still works at run time.
 
 A host that builds the pipeline itself can apply the same joints with
 `builder.AddPlugin(new DovetailPipelinePlugin(DovetailContextBuilder.Create()))`.
+
+## Run history
+
+ModularPipelines writes a report of every run to `.modularpipelines/run-history` (see
+[run reports](https://modularpipelines.tomlonghurst.dev/docs/how-to/run-reports)), and shows each module's change from the previous
+successful run. `RunHistoryJoint` (or `builder.AddRocketHistory()` without the joints) adds:
+
+- **A stable pipeline identity.** Runs are grouped by `GITHUB_REPOSITORY/GITHUB_WORKFLOW` on GitHub Actions, or by the name of the root
+  folder elsewhere. ModularPipelines would otherwise hash the module list, so adding a module would start a new history.
+- **Estimates from history.** Each module's estimated duration is the median of its last successful runs. The scheduler starts the
+  longest chain first with these estimates, and the progress display shows them. Sub modules, and modules with no successful run yet,
+  use their last duration, kept in `.modularpipelines/estimates` (ModularPipelines would keep it in the user's application-data folder,
+  which a CI cache does not restore).
+- **An opt-in module cache** that skips modules whose declared `[CacheInputs]` did not change.
+
+The settings live in the `History` section, usually in `build/appsettings.yaml`:
+
+```yaml
+History:
+    Enabled: true # false turns run history off
+    Directory: .modularpipelines/run-history # relative to the repository root
+    EstimatesDirectory: .modularpipelines/estimates
+    Retention: 30 # runs kept for this pipeline
+    Samples: 10 # runs an estimate is the median of
+    Identity: my-org/my-repo # defaults to GITHUB_REPOSITORY/GITHUB_WORKFLOW, or the root folder's name
+    ModuleCache:
+        Enabled: false
+        Directory: .modularpipelines/module-cache
+```
+
+`.modularpipelines/` belongs in `.gitignore`. A CI runner starts without it, so cache it between runs:
+
+```yaml
+- uses: actions/cache@v6
+  with:
+      path: .modularpipelines
+      key: modularpipelines-${{ github.workflow }}-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      restore-keys: |
+          modularpipelines-${{ github.workflow }}-${{ github.ref_name }}-
+          modularpipelines-${{ github.workflow }}-main-
+```
 
 | Package                                    | NuGet                                                                                     |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------- |

@@ -26,7 +26,6 @@
 
     <ItemGroup>
         <ProjectReference Include="../../src/ModularPipelines.Extensions/Rocket.Surgery.ModularPipelines.Extensions.csproj" />
-        <ProjectReference Include="../../src/ModularPipelines.Extensions.Distributed/Rocket.Surgery.ModularPipelines.Extensions.Distributed.csproj" />
         <ProjectReference Include="../../src/ModularPipelines.Extensions.Analyzers/Rocket.Surgery.ModularPipelines.Extensions.Analyzers.csproj" />
     </ItemGroup>
 </Project>

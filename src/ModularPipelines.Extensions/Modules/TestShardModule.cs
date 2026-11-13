@@ -1,24 +1,13 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using ModularPipelines.Caching;
-using ModularPipelines.Distributed;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>The services a test shard uses, in one parameter so the generated shards stay one line each.</summary>
 [PublicAPI]
-public sealed class TestShardServices
-(
-    ArtifactSettings artifactSettings,
-    TestSettings testSettings,
-    IOptions<DistributedOptions> distributedOptions,
-    IOptions<ModuleCacheOptions> moduleCacheOptions,
-    SolutionSettings? solutionSettings = null)
+public sealed class TestShardServices(ArtifactSettings artifactSettings, TestSettings testSettings, SolutionSettings? solutionSettings = null)
 {
     internal ArtifactSettings ArtifactSettings => artifactSettings;
     internal TestSettings TestSettings => testSettings;
-    internal DistributedOptions DistributedOptions => distributedOptions.Value;
-    internal ModuleCacheOptions ModuleCacheOptions => moduleCacheOptions.Value;
     internal SolutionSettings? SolutionSettings => solutionSettings;
 }
 
@@ -26,10 +15,6 @@ public sealed class TestShardServices
 ///     The base of the generated <c>TestShard1</c> to <c>TestShardN</c> modules: runs the test projects <see cref="TestShardPlan" />
 ///     gave this shard, exactly as <see cref="TestSolution" /> runs each project in <see cref="TestMode.PerProject" /> mode.
 /// </summary>
-/// <remarks>
-///     A shard is not pinned to the coordinator. On a worker it restores and builds what it tests, and stages its projects' results as
-///     its <see cref="TestShards.ResultsArtifact" /> artifact, which <see cref="GenerateCodeCoverageReports" /> downloads.
-/// </remarks>
 /// <param name="services">The shard's services.</param>
 /// <param name="number">The shard's number, from one.</param>
 [DependsOn<BuildSolution>]
@@ -52,11 +37,6 @@ public abstract class TestShardModule(TestShardServices services, int number) : 
         ArgumentNullException.ThrowIfNull(context);
         var testSettings = services.TestSettings;
         var settings = services.SolutionSettings!;
-        var isWorker = CoordinatorCapabilityProvider.IsWorker(services.DistributedOptions);
-
-        var staging = TestShards.GetResultsArtifactFolder(services.ModuleCacheOptions, number);
-        if (staging.Exists) staging.Delete();
-        staging.Create();
 
         var plan = ( await context.GetModule<TestShardPlan>() ).ValueOrDefault
          ?? throw new InvalidOperationException($"{nameof(TestShardPlan)} has no result, so test shard {number} does not know its projects");
@@ -70,18 +50,13 @@ public abstract class TestShardModule(TestShardServices services, int number) : 
             return new(null, [], binlog, []);
         }
 
-        if (isWorker)
-        {
-            await TestProjectRunner.RestoreOnceAsync(context, settings.Solution, cancellationToken);
-        }
-
         foreach (var project in projects)
         {
             var resultsDirectory = TestProjectRunner.GetResultsDirectory(project, testSettings);
             if (resultsDirectory.Exists) resultsDirectory.Delete();
         }
 
-        // A file of its own: shards on one machine write the default settings side by side.
+        // A file of its own: the shards write the default settings side by side.
         var runSettings = testSettings.RunSettings;
         if (testSettings.UsesDefaultRunSettings || !runSettings.Exists)
         {
@@ -89,21 +64,10 @@ public abstract class TestShardModule(TestShardServices services, int number) : 
             await SolutionProjects.WriteDefaultRunSettingsAsync(runSettings, plan.Projects, testSettings, cancellationToken);
         }
 
-        var outcomes = await TestProjectRunner.RunProjectsAsync(context, projects, settings, testSettings, runSettings, isWorker, cancellationToken);
-
-        if (isWorker)
-        {
-            foreach (var outcome in outcomes.Where(outcome => outcome.ResultsDirectory.Exists))
-            {
-                await outcome.ResultsDirectory.CopyToAsync(staging.GetFolder(outcome.ResultsDirectory.Name), cancellationToken: cancellationToken);
-            }
-        }
+        var outcomes = await TestProjectRunner.RunProjectsAsync(context, projects, settings, testSettings, runSettings, cancellationToken);
 
         return TestProjectRunner.ThrowIfAnyFailed(
             new(null, [.. outcomes.SelectMany(outcome => TestProjectRunner.FindTrxFiles(outcome.ResultsDirectory))], binlog, outcomes)
-            {
-                StagedOnWorker = isWorker,
-            }
         );
     }
 }

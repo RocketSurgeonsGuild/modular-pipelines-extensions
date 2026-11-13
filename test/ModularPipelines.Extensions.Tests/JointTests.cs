@@ -2,7 +2,6 @@ using Joinery.Dovetail;
 using Joinery.Dovetail.Joints;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Rocket.Surgery.ModularPipelines.Extensions.Distributed;
 using Rocket.Surgery.ModularPipelines.Extensions.Joints;
 using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 using Rocket.Surgery.ModularPipelines.Extensions.Readme;
@@ -103,19 +102,5 @@ public class JointTests
         {
             root.Delete(true);
         }
-    }
-
-    [Test]
-    public async Task The_distributed_joint_runs_a_standalone_pipeline_without_a_redis_connection()
-    {
-        Skip.When(
-            !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(RocketDistributedOptions.RedisEnvironmentVariable)),
-            "A Redis connection is configured in this environment."
-        );
-
-        await using var pipeline = await Pipeline.CreateBuilder().ConfigureDovetail();
-
-        var registration = pipeline.Services.GetRequiredService<RocketDistributedRegistration>();
-        await Assert.That(registration.IsDistributed).IsFalse();
     }
 }

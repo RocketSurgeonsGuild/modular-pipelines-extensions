@@ -74,18 +74,6 @@ ModularPipelines' own `--skip-module` still works at run time.
 A host that builds the pipeline itself can apply the same joints with
 `builder.AddPlugin(new DovetailPipelinePlugin(DovetailContextBuilder.Create()))`.
 
-# Distributed builds
-
-`Rocket.Surgery.ModularPipelines.Extensions.Distributed` runs the pipeline across several CI runners with the distributed mode of
-ModularPipelines v4, coordinated through Redis. The master runner keeps the modules that need the whole run (build, pack, docs,
-coverage report) and workers take the rest, such as the test run. It turns itself on only when `REDIS_URL` is set and
-`MODULARPIPELINES_TOTAL_INSTANCES` is greater than one, so runs without the secret (forks, Dependabot, local builds) stay ordinary
-standalone runs.
-
-See [docs/distributed.md](docs/distributed.md) for the requirements, settings and risks, and
-[docs/samples/distributed-build.yml](docs/samples/distributed-build.yml) for a GitHub Actions workflow that publishes the build host
-once and runs it on every runner.
-
 # Whats next?
 
 TBD

@@ -4,7 +4,6 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 [DependsOn<BuildSolution>]
 [DependsOn<GitVersionModule>]
-[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class PackSolution
 (
     ArtifactSettings artifactSettings,

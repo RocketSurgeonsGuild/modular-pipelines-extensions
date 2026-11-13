@@ -6,7 +6,6 @@ using YamlDotNet.Serialization;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class ReadmeUpdater
 (
 ReadmeSettings readmeSettings,

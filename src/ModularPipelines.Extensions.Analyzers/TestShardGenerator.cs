@@ -7,7 +7,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Analyzers;
 
 /// <summary>
 ///     Writes <c>TestShard1</c> to <c>TestShardN</c>, one test module per shard, into a build host whose <c>RocketTestShards</c> MSBuild
-///     property is more than one. ModularPipelines places modules by type, so only distinct module types can run on different workers.
+///     property is more than one. ModularPipelines schedules modules by type, so only distinct module types run side by side.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class TestShardGenerator : IIncrementalGenerator
@@ -72,8 +72,6 @@ public sealed class TestShardGenerator : IIncrementalGenerator
             var number = shard.ToString(CultureInfo.InvariantCulture);
             builder
                .Append("/// <summary>Test shard ").Append(number).Append(" of ").Append(count.ToString(CultureInfo.InvariantCulture)).AppendLine(".</summary>")
-               .Append("[global::ModularPipelines.ProducesArtifact(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifact, ")
-               .Append("global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifactDirectory + \"/shard-").Append(number).AppendLine("\")]")
                .Append("internal sealed partial class TestShard").Append(number)
                .Append("(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardServices services)")
                .Append(" : global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardModule(services, ").Append(number).AppendLine(");")

@@ -39,7 +39,6 @@
         <PackageVersion Include="MSBuild.StructuredLogger" Version="2.3.269" />
         <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
         <PackageVersion Include="ModularPipelines" Version="4.0.0-rc.1" />
-        <PackageVersion Include="ModularPipelines.Distributed.Redis" Version="4.0.0-rc.1" />
         <PackageVersion Include="ModularPipelines.DotNet" Version="4.0.0-rc.1" />
         <PackageVersion Include="ModularPipelines.Git" Version="4.0.0-rc.1" />
         <PackageVersion Include="ModelingEvolution.JsonParsableConverter" Version="1.0.1" />

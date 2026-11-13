@@ -5,16 +5,15 @@ using ModularPipelines.Reporting;
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>
-///     Splits the selected test projects between the test shards (see <see cref="TestShards" />), once, on the coordinator.
+///     Splits the selected test projects between the test shards (see <see cref="TestShards" />), once for the whole run.
 /// </summary>
 /// <remarks>
-///     The split is this module's result, which a distributed run sends to whichever process runs a shard, so every shard works from
-///     the same split even when the machines' estimates differ. Recomputing it in each shard could run a project twice or not at all.
-///     Projects are placed longest first by the durations their sub modules took last time (under <see cref="TestSolution" /> or a
-///     shard), or round-robin by path when there are none.
+///     The split is this module's result, which every shard depends on, so all of them work from the same split. Recomputing it in
+///     each shard could run a project twice or not at all if the durations changed in between. Projects are placed longest first by
+///     the durations their sub modules took last time (under <see cref="TestSolution" /> or a shard), or round-robin by path when there
+///     are none.
 /// </remarks>
 [DependsOn<RestoreSolution>]
-[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class TestShardPlan
 (
     SharedSettings sharedSettings,

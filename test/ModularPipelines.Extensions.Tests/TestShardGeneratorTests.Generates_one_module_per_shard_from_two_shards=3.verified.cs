@@ -5,15 +5,12 @@
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules.Shards;
 
 /// <summary>Test shard 1 of 3.</summary>
-[global::ModularPipelines.ProducesArtifact(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifact, global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifactDirectory + "/shard-1")]
 internal sealed partial class TestShard1(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardServices services) : global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardModule(services, 1);
 
 /// <summary>Test shard 2 of 3.</summary>
-[global::ModularPipelines.ProducesArtifact(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifact, global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifactDirectory + "/shard-2")]
 internal sealed partial class TestShard2(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardServices services) : global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardModule(services, 2);
 
 /// <summary>Test shard 3 of 3.</summary>
-[global::ModularPipelines.ProducesArtifact(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifact, global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShards.ResultsArtifactDirectory + "/shard-3")]
 internal sealed partial class TestShard3(global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardServices services) : global::Rocket.Surgery.ModularPipelines.Extensions.Modules.TestShardModule(services, 3);
 
 internal static class RocketTestShardRegistration

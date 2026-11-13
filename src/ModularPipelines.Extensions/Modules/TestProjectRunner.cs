@@ -29,7 +29,6 @@ internal static class TestProjectRunner
         SolutionSettings settings,
         TestSettings testSettings,
         FilePath runSettings,
-        bool isWorker,
         CancellationToken cancellationToken
     )
     {
@@ -46,7 +45,7 @@ internal static class TestProjectRunner
                     var commandResult = await context.RunSubModuleAsync(
                         name,
                         subToken => context.Tools.DotNet.TestAsync(
-                            CreateOptions(settings, testSettings, runSettings, isWorker, resultsDirectory) with { Project = project.Path.Path },
+                            CreateOptions(settings, testSettings, runSettings, resultsDirectory) with { Project = project.Path.Path },
                             new(),
                             subToken
                         ),
@@ -69,16 +68,14 @@ internal static class TestProjectRunner
         SolutionSettings settings,
         TestSettings testSettings,
         FilePath runSettings,
-        bool isWorker,
         FolderPath resultsDirectory
     ) =>
         new()
         {
             Configuration = settings.Configuration,
             Framework = testSettings.TestFramework,
-            // A worker did not run the coordinator's restore and build, so its tests build what they run.
-            NoRestore = !isWorker,
-            NoBuild = !isWorker,
+            NoRestore = true,
+            NoBuild = true,
             ResultsDirectory = resultsDirectory,
             Arguments =
             [
@@ -114,17 +111,4 @@ internal static class TestProjectRunner
             : result;
 
     public static string FirstLine(string message) => message.Split('\n', 2)[0].TrimEnd();
-
-    // Several shards can run in one worker process; one restore of the solution serves them all.
-    private static readonly ConcurrentDictionary<string, Lazy<Task>> Restores = new(StringComparer.Ordinal);
-
-    /// <summary>Restores the solution once per process, for a worker, which did not run the coordinator's restore.</summary>
-    public static Task RestoreOnceAsync(IModuleContext context, FilePath solution, CancellationToken cancellationToken)
-    {
-        var restore = Restores.GetOrAdd(
-            solution.Path,
-            _ => new(() => context.Tools.DotNet.RestoreAsync(new() { ProjectSolution = solution, IgnoreFailedSources = true }, new(), CancellationToken.None))
-        );
-        return restore.Value.WaitAsync(cancellationToken);
-    }
 }

@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-[RequiresCapability(RocketCapabilities.Coordinator)]
 public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : Module<DownloadPackageIconModule.Result?>
 {
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(

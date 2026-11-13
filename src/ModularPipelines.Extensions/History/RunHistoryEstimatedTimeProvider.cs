@@ -12,9 +12,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 ///     duration kept in <see cref="RocketHistoryOptions.EstimatesDirectory" />.
 /// </summary>
 /// <remarks>
-///     In a distributed run each module's duration is saved by the machine that ran it, but the master plans the critical path from
-///     its own estimates. Run history is written by the master and holds every module, wherever it ran, so the master estimates from
-///     it. Run history has no sub modules, so those, and modules with no history yet, fall back to the last duration saved here, in a
+///     Run history has no sub modules, so those, and modules with no history yet, fall back to the last duration saved here, in a
 ///     folder under the repository so the same CI cache restores it.
 /// </remarks>
 public sealed class RunHistoryEstimatedTimeProvider(

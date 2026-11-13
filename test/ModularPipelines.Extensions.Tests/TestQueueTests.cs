@@ -114,10 +114,12 @@ public class TestQueueTests
         await Assert.That(description).IsEqualTo(
             string.Join(
                 Environment.NewLine,
+                (string[])[
                 "3 test projects, 2 at a time, longest first by their last runs, one slot taking the shortest first (estimated 1 minute for the 2 with a previous run)",
                 "  1. New: no previous run",
                 "  2. Slow: 1 minute",
-                "  3. Fast: 5 seconds"
+                "  3. Fast: 5 seconds",
+                ]
             )
         );
     }

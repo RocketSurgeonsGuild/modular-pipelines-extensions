@@ -24,9 +24,7 @@ public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : 
 
         LogDownloadingPackageIcon(context.Logger, url, destination);
 
-        using var http = new HttpClient();
-        var bytes = await http.GetByteArrayAsync(url, cancellationToken);
-        await File.WriteAllBytesAsync(destination, bytes, cancellationToken);
+        await context.Network.Downloader.DownloadFileAsync(new(url) { SavePath = destination, Overwrite = true }, cancellationToken);
 
         LogPackageIconStaged(context.Logger, destination);
         return new(destination);

@@ -24,7 +24,7 @@ public class RunHistoryTests
 
             var runReport = pipeline.Services.GetRequiredService<IOptions<PipelineOptions>>().Value.RunReport;
             await Assert.That(runReport.HistoryDirectory).IsEqualTo(Path.Combine(root.FullName, ".modularpipelines", "run-history"));
-            await Assert.That(runReport.HistoryRetention).IsEqualTo(30);
+            await Assert.That(runReport.HistoryRetention).IsEqualTo(50);
             await Assert.That(runReport.PipelineIdentity).IsEqualTo("rocket/build");
             await Assert.That(pipeline.Services.GetServices<IModuleEstimatedTimeProvider>().OfType<RunHistoryEstimatedTimeProvider>()).IsNotEmpty();
         }
@@ -77,7 +77,7 @@ public class RunHistoryTests
         var root = Directory.CreateTempSubdirectory("rocket-cache-");
         try
         {
-            CachedModule.Executions = 0;
+            CachedModule.ResetExecutions();
 
             var first = await RunCachedModuleAsync(root.FullName);
             var second = await RunCachedModuleAsync(root.FullName);
@@ -118,31 +118,40 @@ public class RunHistoryTests
     [Test]
     public async Task Reads_the_options_from_the_history_section()
     {
-        var root = Path.Combine(Path.GetTempPath(), "rocket-root");
-        var configuration = new ConfigurationBuilder()
-                           .AddInMemoryCollection(
-                                [
-                                    new("RootDirectory", root),
-                                    new("History:Directory", "history"),
-                                    new("History:EstimatesDirectory", "/var/estimates"),
-                                    new("History:Retention", "5"),
-                                    new("History:Samples", "3"),
-                                    new("History:Identity", "custom"),
-                                    new("History:ModuleCache:Enabled", "true"),
-                                ]
-                            )
-                           .Build();
+        var root = Directory.CreateTempSubdirectory("rocket-history-");
+        try
+        {
+            await using var pipeline = await CreateBuilder(
+                    ("RootDirectory", root.FullName),
+                    ("History:Directory", "history"),
+                    ("History:EstimatesDirectory", "/var/estimates"),
+                    ("History:Retention", "5"),
+                    ("History:Samples", "3"),
+                    ("History:Identity", "custom"),
+                    ("History:ModuleCache:Enabled", "false")
+                )
+               .ConfigureDovetail();
 
-        var options = RocketHistoryOptions.FromConfiguration(configuration, Path.GetTempPath());
+            // Bound by Dovetail's managed configuration for everything that reads it at run time...
+            var options = pipeline.Services.GetRequiredService<IOptions<RocketHistoryOptions>>().Value;
+            await Assert.That(options.Directory).IsEqualTo("history");
+            await Assert.That(options.EstimatesDirectory).IsEqualTo("/var/estimates");
+            await Assert.That(options.Retention).IsEqualTo(5);
+            await Assert.That(options.Samples).IsEqualTo(3);
+            await Assert.That(options.Identity).IsEqualTo("custom");
+            await Assert.That(options.ModuleCache.Enabled).IsFalse();
 
-        await Assert.That(options.Enabled).IsTrue();
-        await Assert.That(options.RootDirectory).IsEqualTo(Path.GetFullPath(root));
-        await Assert.That(options.Resolve(options.HistoryDirectory)).IsEqualTo(Path.Combine(Path.GetFullPath(root), "history"));
-        await Assert.That(options.Resolve(options.EstimatesDirectory)).IsEqualTo(Path.GetFullPath("/var/estimates"));
-        await Assert.That(options.Retention).IsEqualTo(5);
-        await Assert.That(options.EstimateSamples).IsEqualTo(3);
-        await Assert.That(options.PipelineIdentity).IsEqualTo("custom");
-        await Assert.That(options.ModuleCache).IsTrue();
+            // ...and applied by the joint to the pipeline's own options.
+            var runReport = pipeline.Services.GetRequiredService<IOptions<PipelineOptions>>().Value.RunReport;
+            await Assert.That(runReport.HistoryDirectory).IsEqualTo(Path.Combine(root.FullName, "history"));
+            await Assert.That(runReport.HistoryRetention).IsEqualTo(5);
+            await Assert.That(runReport.PipelineIdentity).IsEqualTo("custom");
+            await Assert.That(pipeline.Services.GetService<IModuleCacheStore>()).IsNull();
+        }
+        finally
+        {
+            root.Delete(true);
+        }
     }
 
     [Test]
@@ -157,7 +166,7 @@ public class RunHistoryTests
                 Sample(ModuleStatus.Succeeded, 30),
                 Sample(ModuleStatus.Succeeded, 20)
             );
-            var provider = new RunHistoryEstimatedTimeProvider(reader, Options(root.FullName), NullLogger<RunHistoryEstimatedTimeProvider>.Instance);
+            var provider = Provider(root.FullName, new(), reader);
 
             var estimate = await provider.GetModuleEstimatedTimeAsync(ModuleId.FromType(typeof(BuildSolution)));
 
@@ -175,11 +184,7 @@ public class RunHistoryTests
         var root = Directory.CreateTempSubdirectory("rocket-estimates-");
         try
         {
-            var provider = new RunHistoryEstimatedTimeProvider(
-                new FakeHistoryReader(Sample(ModuleStatus.Failed, 1)),
-                Options(root.FullName),
-                NullLogger<RunHistoryEstimatedTimeProvider>.Instance
-            );
+            var provider = Provider(root.FullName, new(), new FakeHistoryReader(Sample(ModuleStatus.Failed, 1)));
             var moduleId = ModuleId.FromType(typeof(BuildSolution));
 
             var before = await provider.GetModuleEstimatedTimeAsync(moduleId);
@@ -201,11 +206,7 @@ public class RunHistoryTests
         var root = Directory.CreateTempSubdirectory("rocket-estimates-");
         try
         {
-            var provider = new RunHistoryEstimatedTimeProvider(
-                new FakeHistoryReader(),
-                Options(root.FullName) with { EstimateSamples = 3 },
-                NullLogger<RunHistoryEstimatedTimeProvider>.Instance
-            );
+            var provider = Provider(root.FullName, new() { Samples = 3 });
             var moduleId = ModuleId.FromType(typeof(TestSolution));
 
             // Saved side by side, as sub modules finish.
@@ -236,7 +237,13 @@ public class RunHistoryTests
         return builder;
     }
 
-    private static RocketHistoryOptions Options(string root) => new() { RootDirectory = root };
+    private static RunHistoryEstimatedTimeProvider Provider(string root, RocketHistoryOptions options, IRunHistoryReader? reader = null) =>
+        new(
+            reader ?? new FakeHistoryReader(),
+            Options.Create(options),
+            new(new ConfigurationBuilder().AddInMemoryCollection([new("RootDirectory", root)]).Build()),
+            NullLogger<RunHistoryEstimatedTimeProvider>.Instance
+        );
 
     private static ModuleDurationSample Sample(ModuleStatus status, int seconds) =>
         new(Guid.NewGuid().ToString("N"), DateTimeOffset.UtcNow, status, TimeSpan.FromSeconds(seconds));
@@ -244,13 +251,18 @@ public class RunHistoryTests
     // Opts into the module cache with a key part; ModularPipelines caches only the modules that declare what their result depends on.
     public sealed class CachedModule : Module<string>
     {
-        public static int Executions;
+        // Each run creates the module anew, so the count lives on the type.
+        private static int _executions;
+
+        public static int Executions => Volatile.Read(ref _executions);
+
+        public static void ResetExecutions() => Interlocked.Exchange(ref _executions, 0);
 
         protected override void Configure(ModuleConfigurationBuilder module) => module.WithCacheKeyPart("version=1");
 
         protected override Task<string> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
         {
-            Interlocked.Increment(ref Executions);
+            Interlocked.Increment(ref _executions);
             return Task.FromResult("cached");
         }
     }

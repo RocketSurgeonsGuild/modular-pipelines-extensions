@@ -1,99 +1,52 @@
-using Microsoft.Extensions.Configuration;
+using Joinery.Dovetail.Attributes;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 
 /// <summary>
-///     How <see cref="RocketHistoryExtensions.AddRocketHistory" /> keeps run history and estimates module durations. Read from the
-///     <c>History</c> configuration section by <see cref="FromConfiguration" />.
+///     How <see cref="Joints.RunHistoryJoint" /> keeps run history, duration estimates and the module cache under the repository: the
+///     <c>History</c> configuration section. Folders are relative to the repository root unless fully qualified.
 /// </summary>
-public sealed record RocketHistoryOptions
+[DovetailConfiguration("History")]
+public sealed class RocketHistoryOptions
 {
-    /// <summary>The default history folder, relative to <see cref="RootDirectory" />.</summary>
-    public static readonly string DefaultHistoryDirectory = Path.Combine(".modularpipelines", "run-history");
+    /// <summary>Whether run history is kept. Off, the estimates are the last duration of each module.</summary>
+    public bool Enabled { get; set; } = true;
 
-    /// <summary>The default estimates folder, relative to <see cref="RootDirectory" />.</summary>
-    public static readonly string DefaultEstimatesDirectory = Path.Combine(".modularpipelines", "estimates");
-
-    /// <summary>The default module cache folder, relative to <see cref="RootDirectory" />.</summary>
-    public static readonly string DefaultModuleCacheDirectory = Path.Combine(".modularpipelines", "module-cache");
+    /// <summary>Where the run reports are kept.</summary>
+    public string Directory { get; set; } = ".modularpipelines/run-history";
 
     /// <summary>
-    ///     Whether run history is kept (<c>History:Enabled</c>, default <see langword="true" />). Off, ModularPipelines keeps no run
-    ///     history at all, and the estimates are the last duration of each module.
+    ///     Where the durations run history does not keep are kept: each sub module's last runs, and each module's last run for a module
+    ///     with no history yet.
     /// </summary>
-    public bool Enabled { get; init; } = true;
+    public string EstimatesDirectory { get; set; } = ".modularpipelines/estimates";
 
-    /// <summary>The repository root that relative folders resolve against.</summary>
-    public required string RootDirectory { get; init; }
+    /// <summary>How many runs are kept for this pipeline identity.</summary>
+    public int Retention { get; set; } = 50;
+
+    /// <summary>How many past runs an estimate is the median of.</summary>
+    public int Samples { get; set; } = 10;
 
     /// <summary>
-    ///     Where the run reports are kept (<c>History:Directory</c>). Relative to <see cref="RootDirectory" /> unless fully qualified,
-    ///     so a CI cache can restore it.
+    ///     The pipeline identity run history is grouped by. Defaults to <c>GITHUB_REPOSITORY/GITHUB_WORKFLOW</c> on GitHub Actions, and to
+    ///     the name of the root folder elsewhere, so it survives adding or removing modules (ModularPipelines would hash the module list).
     /// </summary>
-    public string HistoryDirectory { get; init; } = DefaultHistoryDirectory;
+    public string? Identity { get; set; }
 
+    /// <summary>The module cache.</summary>
+    public RocketModuleCacheOptions ModuleCache { get; set; } = new();
+}
+
+/// <summary>The module cache settings of <see cref="RocketHistoryOptions" />.</summary>
+public sealed class RocketModuleCacheOptions
+{
     /// <summary>
-    ///     Where the last durations of modules and their sub modules are kept (<c>History:EstimatesDirectory</c>). Run history only
-    ///     records whole modules, so sub module estimates live here, and so do those of modules with no successful run in it yet.
+    ///     Whether the file-system module cache is registered. It only restores modules that declare what their result depends on
+    ///     (<c>[CacheInputs]</c>, <c>WithCacheKeyPart</c>, <c>WithCacheEnvironmentVariable</c> or <c>WithCacheAssemblyVersionKey</c>);
+    ///     <c>--no-cache</c> bypasses it for one run.
     /// </summary>
-    public string EstimatesDirectory { get; init; } = DefaultEstimatesDirectory;
+    public bool Enabled { get; set; } = true;
 
-    /// <summary>How many runs are kept for this pipeline identity (<c>History:Retention</c>, default 30).</summary>
-    public int Retention { get; init; } = 30;
-
-    /// <summary>
-    ///     The pipeline identity run history is grouped by (<c>History:Identity</c>). Defaults to <c>GITHUB_REPOSITORY</c> and
-    ///     <c>GITHUB_WORKFLOW</c> on GitHub Actions, and to the name of the root directory elsewhere, so it survives adding or removing
-    ///     modules (ModularPipelines would otherwise hash the module list).
-    /// </summary>
-    public string? PipelineIdentity { get; init; }
-
-    /// <summary>How many past successful runs a module's estimate is the median of (<c>History:Samples</c>, default 10).</summary>
-    public int EstimateSamples { get; init; } = 10;
-
-    /// <summary>
-    ///     Whether the file-system module cache is registered (<c>History:ModuleCache:Enabled</c>, default <see langword="true" />). It
-    ///     only restores modules that declare what their result depends on (<c>[CacheInputs]</c>, <c>WithCacheKeyPart</c>,
-    ///     <c>WithCacheEnvironmentVariable</c> or <c>WithCacheAssemblyVersionKey</c>); <c>--no-cache</c> bypasses it for one run.
-    /// </summary>
-    public bool ModuleCache { get; init; } = true;
-
-    /// <summary>Where the module cache is kept (<c>History:ModuleCache:Directory</c>).</summary>
-    public string ModuleCacheDirectory { get; init; } = DefaultModuleCacheDirectory;
-
-    internal string Resolve(string path) => Path.GetFullPath(path, RootDirectory);
-
-    /// <summary>Reads the options from the <c>History</c> section and the environment.</summary>
-    /// <param name="configuration">The pipeline configuration.</param>
-    /// <param name="workingDirectory">The pipeline's working directory, used to find the repository root.</param>
-    public static RocketHistoryOptions FromConfiguration(IConfiguration configuration, string workingDirectory)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        var section = configuration.GetSection("History");
-        var root = configuration.GetValue<string?>("RootDirectory") is { Length: > 0 } configuredRoot
-            ? Path.GetFullPath(configuredRoot, workingDirectory)
-            : PipelineDirectory.FindGitRoot(Path.Combine(workingDirectory, "_"));
-
-        var defaults = new RocketHistoryOptions { RootDirectory = root };
-        return defaults with
-        {
-            Enabled = section.GetValue("Enabled", defaults.Enabled),
-            HistoryDirectory = section.GetValue<string?>("Directory") ?? defaults.HistoryDirectory,
-            EstimatesDirectory = section.GetValue<string?>("EstimatesDirectory") ?? defaults.EstimatesDirectory,
-            Retention = section.GetValue("Retention", defaults.Retention),
-            EstimateSamples = section.GetValue("Samples", defaults.EstimateSamples),
-            PipelineIdentity = section.GetValue<string?>("Identity") ?? DefaultIdentity(root),
-            ModuleCache = section.GetValue("ModuleCache:Enabled", defaults.ModuleCache),
-            ModuleCacheDirectory = section.GetValue<string?>("ModuleCache:Directory") ?? defaults.ModuleCacheDirectory,
-        };
-    }
-
-    private static string DefaultIdentity(string root)
-    {
-        var repository = Environment.GetEnvironmentVariable("GITHUB_REPOSITORY");
-        if (string.IsNullOrWhiteSpace(repository)) return Path.GetFileName(Path.TrimEndingDirectorySeparator(root));
-
-        var workflow = Environment.GetEnvironmentVariable("GITHUB_WORKFLOW");
-        return string.IsNullOrWhiteSpace(workflow) ? repository : $"{repository}/{workflow}";
-    }
+    /// <summary>Where the module cache is kept.</summary>
+    public string Directory { get; set; } = ".modularpipelines/module-cache";
 }

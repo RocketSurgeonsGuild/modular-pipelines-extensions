@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ModularPipelines.Reporting;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.History;
@@ -14,18 +15,20 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 /// <remarks>
 ///     Run history has no sub modules, so their durations, and the last duration of each module for one with no history yet, are kept
 ///     here, in a folder under the repository so the same CI cache restores it. Each sub module keeps its last
-///     <see cref="RocketHistoryOptions.EstimateSamples" /> durations.
+///     <see cref="RocketHistoryOptions.Samples" /> durations.
 /// </remarks>
 public sealed class RunHistoryEstimatedTimeProvider(
     IRunHistoryReader history,
-    RocketHistoryOptions options,
+    IOptions<RocketHistoryOptions> historyOptions,
+    SharedSettings sharedSettings,
     ILogger<RunHistoryEstimatedTimeProvider> logger
 ) : IModuleEstimatedTimeProvider
 {
     // ModularPipelines' own default.
     private static readonly TimeSpan DefaultEstimate = TimeSpan.FromMinutes(2);
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly string _directory = options.Resolve(options.EstimatesDirectory);
+    private readonly RocketHistoryOptions _options = historyOptions.Value;
+    private readonly string _directory = Path.GetFullPath(historyOptions.Value.EstimatesDirectory, sharedSettings.RootDirectory.Path);
 
     /// <inheritdoc />
     public async Task<TimeSpan> GetModuleEstimatedTimeAsync(ModuleId moduleId, CancellationToken cancellationToken = default)
@@ -59,7 +62,7 @@ public sealed class RunHistoryEstimatedTimeProvider(
                     [
                         .. ( entry.SubModules.GetValueOrDefault(subModuleEstimation.SubModuleName) ?? [] )
                           .Append(subModuleEstimation.EstimatedDuration)
-                          .TakeLast(Math.Max(1, options.EstimateSamples)),
+                          .TakeLast(Math.Max(1, _options.Samples)),
                     ],
                 },
             },
@@ -68,11 +71,11 @@ public sealed class RunHistoryEstimatedTimeProvider(
 
     private async Task<TimeSpan?> FromHistoryAsync(ModuleId moduleId, CancellationToken cancellationToken)
     {
-        if (!options.Enabled || options.EstimateSamples <= 0) return null;
+        if (!_options.Enabled || _options.Samples <= 0) return null;
 
         try
         {
-            var samples = await history.GetModuleDurationTrendAsync(moduleId, options.EstimateSamples, cancellationToken).ConfigureAwait(false);
+            var samples = await history.GetModuleDurationTrendAsync(moduleId, _options.Samples, cancellationToken).ConfigureAwait(false);
             var durations = samples.Where(s => s.Status == ModuleStatus.Succeeded).Select(s => s.Duration).ToArray();
             return durations.Length == 0 ? null : Median(durations);
         }

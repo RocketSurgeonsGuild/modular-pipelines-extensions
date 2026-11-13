@@ -26,7 +26,7 @@ file-based build host references both next to the library and applies the joints
 
 ```csharp
 #:package Rocket.Surgery.ModularPipelines.Extensions@<version>
-#:package Joinery.Dovetail.ModularPipelines@0.5.1
+#:package Joinery.Dovetail.ModularPipelines@0.5.2
 #:package Specular@0.4.1
 
 using Build;
@@ -58,9 +58,7 @@ folder in the `BuildScriptsRoot` context value (above, the `BuildScriptsRoot` MS
 exposed through `ProjectProperty`), or else the folder of a file-based build host's `.cs` file. Dovetail's JSON and YAML joints then read
 `appsettings.*`, `appsettings.{Environment}.*` and `appsettings.local.*` there, in place, so a change applies without a rebuild. Each
 format is layered on its own, so a `.local` file overrides the files of its own format; environment variables and the command line win
-over all of them. Set `DovetailEnableYamlConfiguration=false` for a file-based build host with an `appsettings.yaml` next to it: Dovetail
-(0.5.1) otherwise generates a joint that requires `Build.yaml` relative to the working directory, while the build copies it to the
-output folder.
+over all of them.
 
 **Leaving modules out.** Put a `ModuleDelegate` in the context, `ConfigureDovetail(z => z.Set<ModuleDelegate>(type => type !=
 typeof(DocsModule)))`, or leave the `ModulesJoint` out with `z.ExceptJoint(typeof(ModulesJoint))` and add the modules yourself.

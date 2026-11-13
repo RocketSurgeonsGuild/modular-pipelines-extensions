@@ -88,7 +88,8 @@ public class JointTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.yaml"), "Rocket:\n  FromYaml: yaml\n  Overridden: yaml\n");
-            await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.local.json"), """{ "Rocket": { "Overridden": "local" } }""");
+            await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.local.yaml"), "Rocket:\n  Overridden: local\n");
+            await File.WriteAllTextAsync(Path.Combine(root.FullName, "appsettings.json"), """{ "Rocket": { "FromJson": "json" } }""");
 
             await using var pipeline = await Pipeline
                                             .CreateBuilder()
@@ -96,6 +97,7 @@ public class JointTests
 
             var configuration = pipeline.Services.GetRequiredService<IConfiguration>();
             await Assert.That(configuration["Rocket:FromYaml"]).IsEqualTo("yaml");
+            await Assert.That(configuration["Rocket:FromJson"]).IsEqualTo("json");
             await Assert.That(configuration["Rocket:Overridden"]).IsEqualTo("local");
         }
         finally

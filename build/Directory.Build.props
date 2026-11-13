@@ -1,6 +1,13 @@
 <Project>
     <PropertyGroup>
         <BuildScriptsRoot>$(MSBuildThisFileDirectory)</BuildScriptsRoot>
+        <!--
+            Still needed with Dovetail 0.5.1. For appsettings.yaml Dovetail generates a joint that requires Build.yaml (optional: false)
+            and resolves it against the pipeline's file provider, which ModularPipelines roots at the working directory, while the build
+            copies the file to the output folder, so startup fails. The library's BuildScriptsRootJoint reads build/appsettings*.yaml in
+            place instead.
+        -->
+        <DovetailEnableYamlConfiguration>false</DovetailEnableYamlConfiguration>
     </PropertyGroup>
     <ItemGroup>
         <ProjectProperty Include="BuildScriptsRoot" />

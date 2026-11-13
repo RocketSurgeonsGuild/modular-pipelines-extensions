@@ -196,22 +196,32 @@ public class RunHistoryTests
     }
 
     [Test]
-    public async Task Keeps_the_last_duration_of_each_sub_module()
+    public async Task Estimates_each_sub_module_from_the_median_of_its_last_durations()
     {
         var root = Directory.CreateTempSubdirectory("rocket-estimates-");
         try
         {
-            var provider = new RunHistoryEstimatedTimeProvider(new FakeHistoryReader(), Options(root.FullName), NullLogger<RunHistoryEstimatedTimeProvider>.Instance);
+            var provider = new RunHistoryEstimatedTimeProvider(
+                new FakeHistoryReader(),
+                Options(root.FullName) with { EstimateSamples = 3 },
+                NullLogger<RunHistoryEstimatedTimeProvider>.Instance
+            );
             var moduleId = ModuleId.FromType(typeof(TestSolution));
 
+            // Saved side by side, as sub modules finish.
             await Task.WhenAll(
-                provider.SaveSubModuleTimeAsync(moduleId, new("a", TimeSpan.FromSeconds(1))),
+                provider.SaveSubModuleTimeAsync(moduleId, new("a", TimeSpan.FromSeconds(100))),
                 provider.SaveSubModuleTimeAsync(moduleId, new("b", TimeSpan.FromSeconds(2)))
             );
-            await provider.SaveSubModuleTimeAsync(moduleId, new("a", TimeSpan.FromSeconds(3)));
+            // a keeps its last three: 9, 3 and 5, so the 100 has dropped out.
+            foreach (var seconds in (int[])[9, 3, 5])
+            {
+                await provider.SaveSubModuleTimeAsync(moduleId, new("a", TimeSpan.FromSeconds(seconds)));
+            }
+
             var estimates = ( await provider.GetSubModuleEstimatedTimesAsync(moduleId) ).ToDictionary(z => z.SubModuleName, z => z.EstimatedDuration);
 
-            await Assert.That(estimates).IsEquivalentTo(new Dictionary<string, TimeSpan> { ["a"] = TimeSpan.FromSeconds(3), ["b"] = TimeSpan.FromSeconds(2) });
+            await Assert.That(estimates).IsEquivalentTo(new Dictionary<string, TimeSpan> { ["a"] = TimeSpan.FromSeconds(5), ["b"] = TimeSpan.FromSeconds(2) });
         }
         finally
         {
@@ -232,7 +242,7 @@ public class RunHistoryTests
         new(Guid.NewGuid().ToString("N"), DateTimeOffset.UtcNow, status, TimeSpan.FromSeconds(seconds));
 
     // Opts into the module cache with a key part; ModularPipelines caches only the modules that declare what their result depends on.
-    internal sealed class CachedModule : Module<string>
+    public sealed class CachedModule : Module<string>
     {
         public static int Executions;
 

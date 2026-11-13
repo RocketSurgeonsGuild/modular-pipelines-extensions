@@ -8,12 +8,13 @@ using ModularPipelines.Reporting;
 namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 
 /// <summary>
-///     Estimates a module's duration from run history (the median of its last successful runs), and a sub module's from the last
-///     duration kept in <see cref="RocketHistoryOptions.EstimatesDirectory" />.
+///     Estimates a module's duration from run history (the median of its last successful runs), and a sub module's from the median of
+///     its last durations kept in <see cref="RocketHistoryOptions.EstimatesDirectory" />.
 /// </summary>
 /// <remarks>
-///     Run history has no sub modules, so those, and modules with no history yet, fall back to the last duration saved here, in a
-///     folder under the repository so the same CI cache restores it.
+///     Run history has no sub modules, so their durations, and the last duration of each module for one with no history yet, are kept
+///     here, in a folder under the repository so the same CI cache restores it. Each sub module keeps its last
+///     <see cref="RocketHistoryOptions.EstimateSamples" /> durations.
 /// </remarks>
 public sealed class RunHistoryEstimatedTimeProvider(
     IRunHistoryReader history,
@@ -43,7 +44,7 @@ public sealed class RunHistoryEstimatedTimeProvider(
     public async Task<IEnumerable<SubModuleEstimation>> GetSubModuleEstimatedTimesAsync(ModuleId moduleId, CancellationToken cancellationToken = default)
     {
         var entry = await ReadAsync(moduleId, cancellationToken).ConfigureAwait(false);
-        return entry?.SubModules.Select(pair => new SubModuleEstimation(pair.Key, pair.Value)) ?? [];
+        return entry?.SubModules.Where(pair => pair.Value.Count > 0).Select(pair => new SubModuleEstimation(pair.Key, Median(pair.Value))) ?? [];
     }
 
     /// <inheritdoc />
@@ -54,7 +55,12 @@ public sealed class RunHistoryEstimatedTimeProvider(
             {
                 SubModules = new(entry.SubModules, StringComparer.Ordinal)
                 {
-                    [subModuleEstimation.SubModuleName] = subModuleEstimation.EstimatedDuration,
+                    [subModuleEstimation.SubModuleName] =
+                    [
+                        .. ( entry.SubModules.GetValueOrDefault(subModuleEstimation.SubModuleName) ?? [] )
+                          .Append(subModuleEstimation.EstimatedDuration)
+                          .TakeLast(Math.Max(1, options.EstimateSamples)),
+                    ],
                 },
             },
             cancellationToken
@@ -67,8 +73,8 @@ public sealed class RunHistoryEstimatedTimeProvider(
         try
         {
             var samples = await history.GetModuleDurationTrendAsync(moduleId, options.EstimateSamples, cancellationToken).ConfigureAwait(false);
-            var durations = samples.Where(s => s.Status == ModuleStatus.Succeeded).Select(s => s.Duration).Order().ToArray();
-            return durations.Length == 0 ? null : durations[durations.Length / 2];
+            var durations = samples.Where(s => s.Status == ModuleStatus.Succeeded).Select(s => s.Duration).ToArray();
+            return durations.Length == 0 ? null : Median(durations);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -76,6 +82,9 @@ public sealed class RunHistoryEstimatedTimeProvider(
             return null;
         }
     }
+
+    private static TimeSpan Median(IEnumerable<TimeSpan> durations) =>
+        durations.Order().ToArray() is { Length: > 0 } sorted ? sorted[sorted.Length / 2] : DefaultEstimate;
 
     private string GetPath(ModuleId moduleId) =>
         Path.Combine(_directory, $"{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(moduleId.Value)))[..32]}.json");
@@ -125,7 +134,7 @@ public sealed class RunHistoryEstimatedTimeProvider(
     }
 }
 
-internal sealed record EstimateEntry(string ModuleId, TimeSpan? Duration, Dictionary<string, TimeSpan> SubModules);
+internal sealed record EstimateEntry(string ModuleId, TimeSpan? Duration, Dictionary<string, List<TimeSpan>> SubModules);
 
 [JsonSourceGenerationOptions(WriteIndented = true)]
 [JsonSerializable(typeof(EstimateEntry))]

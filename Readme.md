@@ -115,6 +115,24 @@ History:
           modularpipelines-${{ github.workflow }}-main-
 ```
 
+## Tests
+
+`TestSolution` runs one `dotnet test` per test project, each a sub module of its own, several at once, after the solution is built.
+Each project writes its TRX report and cobertura coverage into its own folder (`artifacts/logs/tests/<assembly>`). A failing project
+does not stop the others; the module fails at the end and lists every project that failed.
+
+The projects start in the order that should finish soonest: each free slot takes the next project, and they come longest first by the
+median of their last runs (kept in `.modularpipelines/estimates`, failed runs included). Projects with no previous run go first, since
+one of them may be the longest. The log shows the order, each project's estimate and the run's estimated duration.
+
+```yaml
+EnableTests: true
+TestMode: PerProject # or Solution: one dotnet test over the solution
+TestParallelism: 4 # test projects at once; half the processors by default
+ExcludeTests: # projects left out of the test run (globs relative to the root); they still build and pack
+    - test/Slow.Tests/**
+```
+
 | Package                                    | NuGet                                                                                     |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | Rocket.Surgery.ModularPipelines.Extensions | [![nuget-version-modular-pipelines-extensions-badge]][nuget-modular-pipelines-extensions] |

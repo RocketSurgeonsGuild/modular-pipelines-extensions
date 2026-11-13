@@ -26,7 +26,7 @@ file-based build host references both next to the library and applies the joints
 
 ```csharp
 #:package Rocket.Surgery.ModularPipelines.Extensions@<version>
-#:package Joinery.Dovetail.ModularPipelines@0.5.2
+#:package Joinery.Dovetail.ModularPipelines@0.5.3
 #:package Specular@0.4.1
 
 using Build;
@@ -52,7 +52,9 @@ The library's joints:
 **Settings files.** Dovetail reads a file-based build host's settings files from the folder of its `.cs` file (`build/` for
 `build/Build.cs`), in place, so a change applies without a rebuild: `appsettings.*`, `appsettings.{Environment}.*` and
 `appsettings.local.*`, in JSON and YAML. Each format is layered on its own, so a `.local` file overrides the files of its own format;
-environment variables and the command line win over all of them.
+environment variables and the command line win over all of them. To read them from another folder, as a build host that is a project
+needs to, set `Dovetail:ConfigurationDirectory` (or the `Dovetail__ConfigurationDirectory` environment variable); a relative path is
+resolved against the current directory.
 
 **Leaving modules out.** Mark a module `[ExcludeModule]` to keep it out of the scan; it still runs when something adds it, such as
 `builder.AddModule<T>()` or another module's dependency. To leave out modules you do not own, put a `ModuleDelegate` in the context,

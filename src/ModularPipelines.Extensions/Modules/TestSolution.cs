@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using File = ModularPipelines.FileSystem.File;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
@@ -29,7 +30,6 @@ public partial class TestSolution
         testSettings.TestsDirectory.Clean();
 
         var binlog = artifactSettings.LogsDirectory.GetFile("tests.binlog");
-        var trx = testSettings.TestsDirectory.GetFile("tests.trx");
         var result = await context
                           .DotNet()
                           .Test(
@@ -47,8 +47,12 @@ public partial class TestSolution
                                        "--coverage-settings", testSettings.RunSettings,
                                        //  "--coverage-output", testSettings.CoverageDirectory.GetFile("coverage.cobertura"),
                                        "--coverage-output-format", "cobertura",
+                                       // One TRX per test application, under its default name: a single --report-trx-filename made every
+                                       // assembly (and target framework) write the same file, so only the last one's results were kept.
                                        "--report-trx",
-                                       "--report-trx-filename", trx.Name,
+                                       // Without it, dotnet test also merges the TRX files (and the coverage) into merged/, and a reader of
+                                       // every TRX counts each test twice.
+                                       "--no-artifact-post-processing",
                                    ],
                                    // TODO: Add verbosity, and loggers.
                                    // Arguments
@@ -57,8 +61,9 @@ public partial class TestSolution
                                cancellationToken
                            );
 
+        var trx = testSettings.TestsDirectory.GetFiles(z => z.Name.EndsWith(".trx", StringComparison.OrdinalIgnoreCase)).ToImmutableList();
         return new(result, trx, binlog);
     }
 
-    public record Result(CommandResult CommandResult, File Trx, File Binlog);
+    public record Result(CommandResult CommandResult, ImmutableList<File> Trx, File Binlog);
 }

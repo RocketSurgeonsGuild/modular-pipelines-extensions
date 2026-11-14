@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Tests;
@@ -30,6 +31,18 @@ public class SolutionProjectsTests
         // Only a multi-targeted project's outer build needs asking again, with its first framework chosen.
         await Assert.That(info[Path.GetFullPath("/repo/test/Multi/Multi.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Multi", "", "net10.0", "net10.0;net11.0"));
         await Assert.That(info[Path.GetFullPath("/repo/test/Single/Single.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Single", "true", null, "net11.0"));
+    }
+
+    [Test]
+    [Arguments("PerProject", "true", true)]
+    [Arguments("Solution", "true", false)]
+    [Arguments("PerProject", "false", false)]
+    public async Task Evaluates_the_projects_only_for_a_per_project_test_run(string mode, string enabled, bool needed)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection([new("TestMode", mode), new("EnableTests", enabled)]).Build();
+
+        // Not needed means an empty list, never a skip: a skipped SolutionProjectsModule skips TestSolutionModule, which requires it.
+        await Assert.That(SolutionProjectsModule.IsNeeded(new TestSettings(null!, null!, configuration))).IsEqualTo(needed);
     }
 
     [Test]

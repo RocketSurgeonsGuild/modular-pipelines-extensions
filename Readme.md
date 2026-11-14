@@ -172,7 +172,8 @@ shows each sub module as it starts (with its estimate) and ends, and a table of 
 table also goes to the job summary.
 
 `SolutionProjectsModule` tells `TestSolutionModule` which projects are test projects, what their assemblies are called and which frameworks they target. It evaluates
-every project of the solution in one MSBuild process, alongside the build, and is skipped in `Solution` mode, which does not need it.
+every project of the solution in one MSBuild process, alongside the build. In `Solution` mode, which does not need the list, it returns an
+empty one without evaluating anything (it is not skipped: that would skip the test run with it).
 The fast lane is only used once more projects than slots have a previous run: without history, both estimates are zero and say nothing.
 
 `GenerateCodeCoverageReportsModule` turns the cobertura files `TestSolutionModule` collects into an HTML report, summaries and SVG

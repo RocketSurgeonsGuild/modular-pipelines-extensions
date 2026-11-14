@@ -67,7 +67,7 @@ internal static class TestQueue
           .Select(target =>
                {
                    var name = GetName(target.Project, target.Framework);
-                   return new TestQueueEntry(target.Project, name, estimates.TryGetValue(name, out var estimate) ? estimate : null, target.Framework);
+                   return new TestQueueEntry(target.Project, name, FindEstimate(estimates, target, name), target.Framework);
                }
            )
           .OrderBy(entry => entry.Estimate.HasValue)
@@ -76,6 +76,16 @@ internal static class TestQueue
           .ThenBy(entry => entry.Project.ProjectPath.Path, StringComparer.Ordinal)
           .ThenBy(entry => entry.Framework, StringComparer.Ordinal),
     ];
+
+    /// <summary>
+    ///     A sub module's estimate: by its own name, or, for a project that targets one framework, by that framework's name. A pull
+    ///     request that builds the test projects for one framework then uses the history of the run (on the default branch) that ran
+    ///     each framework as a sub module of its own.
+    /// </summary>
+    private static TimeSpan? FindEstimate(IReadOnlyDictionary<string, TimeSpan> estimates, TestTarget target, string name) =>
+        estimates.TryGetValue(name, out var estimate) ? estimate
+        : target.Framework is null && target.Project.Frameworks is [var only] && estimates.TryGetValue(GetName(target.Project, only), out var framework) ? framework
+        : null;
 
     /// <summary>The sub module name of a project, which is also the key its history is kept under.</summary>
     public static string GetName(SolutionProjectsModule.Project project) => project.AssemblyName;

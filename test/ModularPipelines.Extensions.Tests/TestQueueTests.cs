@@ -302,6 +302,29 @@ public class TestQueueTests
         await Assert.That(defaults.Shard).IsNull();
     }
 
+    [Test]
+    public async Task Uses_the_frameworks_history_for_a_project_built_for_that_framework_alone()
+    {
+        // The default branch ran Multi per framework; a pull request builds it for net11.0 only, so it is one sub module named Multi.
+        var queue = TestQueue.Order(
+            [new TestTarget(Project("Multi", "net11.0")), new(Project("Other", "net10.0", "net11.0"))],
+            Estimates(("Multi [net11.0]", 90), ("Other [net11.0]", 40))
+        );
+
+        await Assert.That(Describe(queue)).IsEqualTo("Other=?, Multi=90");
+    }
+
+    [Test]
+    public async Task Reads_the_build_arguments()
+    {
+        var configuration = new ConfigurationBuilder()
+                           .AddInMemoryCollection([new("BuildArguments:0", "-maxCpuCount:8"), new("BuildArguments:1", "-graphBuild")])
+                           .Build();
+
+        await Assert.That(new SolutionSettings(null!, configuration).BuildArguments).IsEquivalentTo(["-maxCpuCount:8", "-graphBuild"]);
+        await Assert.That(new SolutionSettings(null!, new ConfigurationBuilder().Build()).BuildArguments).IsEmpty();
+    }
+
     private static string Describe(IEnumerable<TestTarget> targets) =>
         string.Join(", ", targets.Select(target => TestQueue.GetName(target.Project, target.Framework)));
 

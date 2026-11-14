@@ -22,8 +22,8 @@ public partial class BuildSolution
                                    Configuration = settings.Configuration,
                                    // Interactive = context.IsRunningLocally(),
                                    NoRestore = true,
-                                   // TODO: Add verbosity, and loggers.
-                                   // Arguments
+                                   // Ahead of BinlogTo's own arguments, which it appends.
+                                   Arguments = [.. settings.BuildArguments],
                                    Properties = ( await context.GetModule<GitVersionModule>() ).ValueOrDefault?.Properties,
                                }.BinlogTo(context, binlog),
                                new(),

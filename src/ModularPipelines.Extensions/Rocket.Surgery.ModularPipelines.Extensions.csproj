@@ -18,10 +18,16 @@
         <PackageReference Include="ModularPipelines.Git" />
         <PackageReference Include="MSBuild.StructuredLogger" />
         <PackageReference Include="Riok.Mapperly" />
-        <PackageReference Include="Joinery.Dovetail.ModularPipelines" />
+        <!--
+            Their generators write ConfigureDovetail() and the module scan into the build host, so their analyzers and build files
+            have to reach it: by default NuGet keeps a dependency's analyzers and build files private (exclude="Build,Analyzers").
+            buildTransitive/Rocket.Surgery.ModularPipelines.Extensions.targets declares the ModularPipelines host, which
+            Joinery.Dovetail.ModularPipelines only declares in build/ (direct references).
+        -->
+        <PackageReference Include="Joinery.Dovetail.ModularPipelines" PrivateAssets="none" />
         <PackageReference Include="Joinery.Dovetail.Configuration.Json" />
         <PackageReference Include="Joinery.Dovetail.Configuration.Yaml" />
-        <PackageReference Include="Specular" />
+        <PackageReference Include="Specular" PrivateAssets="none" />
     </ItemGroup>
 
     <ItemGroup>

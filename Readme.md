@@ -22,12 +22,10 @@
 
 The library ships its setup as [Dovetail](https://github.com/RocketSurgeonsGuild/Dovetail) joints and finds its modules and services
 with [Specular](https://github.com/RocketSurgeonsGuild/Specular) when the build host is compiled, so nothing is scanned at run time. A
-file-based build host references both next to the library and applies the joints with `ConfigureDovetail()`:
+file-based build host references the library and applies the joints with `ConfigureDovetail()`:
 
 ```csharp
 #:package Rocket.Surgery.ModularPipelines.Extensions@<version>
-#:package Joinery.Dovetail.ModularPipelines@0.5.3
-#:package Specular@0.4.1
 
 using Build;
 using Joinery.Dovetail;
@@ -37,9 +35,10 @@ await using var pipeline = await Pipeline.CreateBuilder(args).ConfigureDovetail(
 await pipeline.RunAsync();
 ```
 
-`Joinery.Dovetail.ModularPipelines` and `Specular` have to be direct references: their generators write `ConfigureDovetail` and the
-scan results into the build host, and they do not flow through the library. `ConfigureDovetail` is generated into the build host's
-root namespace (`Build` for `Build.cs`).
+The library brings `Joinery.Dovetail.ModularPipelines` and `Specular` along with their generators, which write `ConfigureDovetail`
+and the module scan into the build host, so the one reference is enough. A build host can still reference either of them directly,
+for example to pin a newer version; the ModularPipelines host is declared once either way. `ConfigureDovetail` is generated into the
+build host's root namespace (`Build` for `Build.cs`).
 
 The library's joints:
 

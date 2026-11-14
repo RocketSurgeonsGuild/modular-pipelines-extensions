@@ -159,14 +159,19 @@ internal static class TestQueue
     }
 
     /// <summary>Describes the order for the log.</summary>
-    public static string Describe(IReadOnlyCollection<TestQueueEntry> queue, int parallelism, bool fastLane)
+    /// <param name="queue">The queue, in <see cref="Order(IEnumerable{TestTarget}, IReadOnlyDictionary{string, TimeSpan}, Func{SolutionProjectsModule.Project, int}?)" />'s order.</param>
+    /// <param name="parallelism">How many run at once.</param>
+    /// <param name="fastLane">Whether the first slot is a fast lane.</param>
+    /// <param name="hasOrder">Whether <see cref="TestSettings.Order" /> names projects, which go first among those with no previous run.</param>
+    public static string Describe(IReadOnlyCollection<TestQueueEntry> queue, int parallelism, bool fastLane, bool hasOrder = false)
     {
         var known = queue.Count(entry => entry.Estimate.HasValue);
         var lanes = fastLane ? ", one slot taking the shortest first" : "";
+        var unknownOrder = hasOrder ? "TestOrder first, then path order" : "path order";
         var summary = known == 0
-            ? $"{queue.Count} test projects, {parallelism} at a time, in path order: none has a previous run"
+            ? $"{queue.Count} test projects, {parallelism} at a time, in {unknownOrder}: none has a previous run"
             : $"{queue.Count} test projects, {parallelism} at a time, longest first by their last runs{lanes}"
-            + $" (estimated {EstimateDuration(queue, parallelism, fastLane).Humanize(2)}{( known < queue.Count ? $" for the {known} with a previous run" : "" )})";
+            + $" (estimated {EstimateDuration(queue, parallelism, fastLane).Humanize(2)}{( known < queue.Count ? $" for the {known} with a previous run; the others start first, in {unknownOrder}" : "" )})";
 
         return summary
              + Environment.NewLine

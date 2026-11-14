@@ -83,7 +83,7 @@ public partial class TestSolutionModule
         var fastLane = TestQueue.UsesFastLane(queue, testSettings.Parallelism);
         if (context.Logger.IsEnabled(LogLevel.Information))
         {
-            LogRunningQueue(context.Logger, TestQueue.Describe(queue, testSettings.Parallelism, fastLane));
+            LogRunningQueue(context.Logger, TestQueue.Describe(queue, testSettings.Parallelism, fastLane, testSettings.Order.Count > 0));
         }
 
         var outcomes = new ConcurrentBag<ProjectResult>();

@@ -130,7 +130,7 @@ public class TestQueueTests
             string.Join(
                 Environment.NewLine,
                 (string[])[
-                "3 test projects, 2 at a time, longest first by their last runs, one slot taking the shortest first (estimated 1 minute for the 2 with a previous run)",
+                "3 test projects, 2 at a time, longest first by their last runs, one slot taking the shortest first (estimated 1 minute for the 2 with a previous run; the others start first, in path order)",
                 "  1. New: no previous run",
                 "  2. Slow: 1 minute",
                 "  3. Fast: 5 seconds",
@@ -145,6 +145,7 @@ public class TestQueueTests
         var queue = TestQueue.Order([Project("B"), Project("A")], Estimates());
 
         await Assert.That(TestQueue.Describe(queue, 4, false)).StartsWith("2 test projects, 4 at a time, in path order: none has a previous run");
+        await Assert.That(TestQueue.Describe(queue, 4, false, true)).StartsWith("2 test projects, 4 at a time, in TestOrder first, then path order: none has a previous run");
     }
 
     [Test]

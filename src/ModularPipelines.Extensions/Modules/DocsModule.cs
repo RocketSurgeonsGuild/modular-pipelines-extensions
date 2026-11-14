@@ -10,10 +10,15 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 public class DocsModule(DocsModule.Settings settings, ArtifactSettings artifactSettings) : Module<DocsModule.Result?>
 {
 
-    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
-        _ => SkipDecision.When(!settings.DocsEnabled || !settings.DocsDirectory.Exists,
-            "Docs directory does not exist, skipping docs build")
-    );
+    protected override void Configure(ModuleConfigurationBuilder module)
+    {
+        module.WithSkipWhen(
+            _ => SkipDecision.When(!settings.DocsEnabled || !settings.DocsDirectory.Exists,
+                "Docs directory does not exist, skipping docs build")
+        );
+        // Optional, so a pipeline without tests (or with them disabled) still builds the docs.
+        if (settings.AfterTests) module.DependsOnOptional<TestSolutionModule>();
+    }
 
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
@@ -39,5 +44,12 @@ public class DocsModule(DocsModule.Settings settings, ArtifactSettings artifactS
         public FolderPath DocsDirectory => field ??= configuration.GetValue<FolderPath?>("Docs:Directory") ?? sharedSettings.RootDirectory / "docs";
         public string DocsBuildTask => field ??= configuration.GetValue<string>("Docs:Task") ?? "docs:build";
         public FolderPath DocsOutputDirectory => field ??= configuration.GetValue<FolderPath?>("Docs:Output") ?? DocsDirectory / "dist";
+
+        /// <summary>
+        ///     Whether the docs build waits for the tests instead of running alongside them. Read from <c>Docs:AfterTests</c>; off by
+        ///     default. On a small runner a heavy docs build can slow the longest test project by about as much as running it alongside
+        ///     saves, so waiting keeps the processors for the tests.
+        /// </summary>
+        public bool AfterTests { get; } = configuration.GetValue("Docs:AfterTests", false);
     }
 }

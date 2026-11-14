@@ -182,6 +182,9 @@ tests; when both are in the pipeline, `CopyCoverageBadgesModule` then copies the
 `coverage-badges/`, so a docs page can reference them (for example `![coverage](coverage-badges/badge_combined.svg)`)
 and they end up on GitHub Pages alongside the rest of the docs.
 
+`Docs:AfterTests: true` makes the docs build wait for the tests instead of running alongside them: on a small runner a heavy docs
+build can slow the longest test project by about as much as running alongside saves.
+
 | Package                                    | NuGet                                                                                     |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | Rocket.Surgery.ModularPipelines.Extensions | [![nuget-version-modular-pipelines-extensions-badge]][nuget-modular-pipelines-extensions] |

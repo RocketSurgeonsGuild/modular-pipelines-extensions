@@ -76,6 +76,21 @@ public class TestQueueTests
     }
 
     [Test]
+    public async Task Has_no_fast_lane_without_enough_history_to_compare()
+    {
+        // Nothing has run before: both estimates are zero, which used to pick the fast lane and start a long project late.
+        var none = TestQueue.Order([Project("A"), Project("B"), Project("C"), Project("D"), Project("E")], Estimates());
+        // Only two of five have run: with three slots, the estimates cannot say which order finishes first.
+        var some = TestQueue.Order(
+            [Project("A"), Project("B"), Project("C"), Project("D"), Project("E")],
+            Estimates(("A", 60), ("E", 5))
+        );
+
+        await Assert.That(TestQueue.UsesFastLane(none, 2)).IsFalse();
+        await Assert.That(TestQueue.UsesFastLane(some, 3)).IsFalse();
+    }
+
+    [Test]
     public async Task Leaves_out_the_fast_lane_when_it_would_finish_later()
     {
         // Three slots. With the fast lane, A (0-60) and B (0-50) take the longest while it runs the five 10s from 0 to 50 and then C
@@ -133,13 +148,13 @@ public class TestQueueTests
     }
 
     [Test]
-    public async Task Runs_tests_per_project_on_half_the_processors_by_default()
+    public async Task Runs_tests_per_project_on_every_processor_by_default()
     {
         var configuration = new ConfigurationBuilder().Build();
         var settings = new TestSettings(null!, null!, configuration);
 
         await Assert.That(settings.Mode).IsEqualTo(TestMode.PerProject);
-        await Assert.That(settings.Parallelism).IsEqualTo(Math.Max(1, Environment.ProcessorCount / 2));
+        await Assert.That(settings.Parallelism).IsEqualTo(Math.Max(1, Environment.ProcessorCount));
     }
 
     [Test]
@@ -154,11 +169,146 @@ public class TestQueueTests
         await Assert.That(settings.Parallelism).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task Excludes_test_projects_by_their_path_from_the_root_directory()
+    {
+        var configuration = new ConfigurationBuilder()
+                           .AddInMemoryCollection([new("RootDirectory", "/repo"), new("ExcludeTests:0", "test/Slow*/**"), new("ExcludeTests:1", "**/*.Integration.csproj")])
+                           .Build();
+        var settings = new TestSettings(new(configuration), null!, configuration);
+
+        await Assert.That(settings.ExcludeTests.Count).IsEqualTo(2);
+        await Assert.That(settings.IsExcluded(new("/repo/test/Slow.Tests/Slow.Tests.csproj"))).IsTrue();
+        await Assert.That(settings.IsExcluded(new("/repo/test/Api/Api.Integration.csproj"))).IsTrue();
+        await Assert.That(settings.IsExcluded(new("/repo/test/Fast.Tests/Fast.Tests.csproj"))).IsFalse();
+    }
+
+    [Test]
+    public async Task Excludes_nothing_by_default()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var settings = new TestSettings(null!, null!, configuration);
+
+        await Assert.That(settings.ExcludeTests).IsEmpty();
+        await Assert.That(settings.IsExcluded(new("/repo/test/A/A.csproj"))).IsFalse();
+    }
+
+    [Test]
+    public async Task Runs_each_framework_of_a_multi_targeted_project_as_its_own_sub_module()
+    {
+        var targets = TestQueue.Expand([Project("Multi", "net10.0", "net11.0"), Project("Single", "net11.0"), Project("Unknown")], true, []).ToArray();
+
+        await Assert.That(Describe(targets)).IsEqualTo("Multi [net10.0], Multi [net11.0], Single, Unknown");
+        // Off, a project runs as a whole.
+        await Assert.That(Describe(TestQueue.Expand([Project("Multi", "net10.0", "net11.0")], false, []))).IsEqualTo("Multi");
+    }
+
+    [Test]
+    public async Task Runs_only_the_frameworks_asked_for()
+    {
+        var targets = TestQueue.Expand(
+            [Project("Multi", "net10.0", "net11.0"), Project("Old", "net10.0"), Project("New", "net11.0"), Project("Unknown")],
+            false,
+            ["net11.0"]
+        );
+
+        // A subset of a project's frameworks has to be passed with --framework, even with TestPerFramework off; a project with none of
+        // them is left out, and one MSBuild said nothing about still runs.
+        await Assert.That(Describe(targets)).IsEqualTo("Multi [net11.0], New, Unknown");
+    }
+
+    [Test]
+    public async Task Splits_the_targets_into_shards_by_path_order()
+    {
+        TestTarget[] targets =
+        [
+            new(Project("C")), new(Project("A", "net10.0", "net11.0"), "net11.0"), new(Project("B")), new(Project("A", "net10.0", "net11.0"), "net10.0"),
+        ];
+
+        await Assert.That(Describe(TestQueue.InShard(targets, new(1, 2)))).IsEqualTo("A [net10.0], B");
+        await Assert.That(Describe(TestQueue.InShard(targets, new(2, 2)))).IsEqualTo("A [net11.0], C");
+        await Assert.That(TestQueue.InShard(targets, null).Count()).IsEqualTo(4);
+    }
+
+    [Test]
+    [Arguments("1/2", 1, 2)]
+    [Arguments(" 3 / 3 ", 3, 3)]
+    public async Task Reads_a_shard(string value, int index, int count)
+    {
+        await Assert.That(TestShard.TryParse(value, out var shard)).IsTrue();
+        await Assert.That(shard).IsEqualTo(new TestShard(index, count));
+    }
+
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
+    [Arguments("2")]
+    [Arguments("0/2")]
+    [Arguments("3/2")]
+    [Arguments("a/b")]
+    public async Task Ignores_a_shard_that_is_not_index_of_count(string? value) => await Assert.That(TestShard.TryParse(value, out _)).IsFalse();
+
+    [Test]
+    public async Task Starts_the_projects_named_first_while_they_have_no_history()
+    {
+        var priority = new Dictionary<string, int>(StringComparer.Ordinal) { ["Long"] = 0, ["Longer"] = 0, ["Medium"] = 1 };
+        var queue = TestQueue.Order(
+            [new TestTarget(Project("A")), new(Project("Medium")), new(Project("Long")), new(Project("Known")), new(Project("Longer"))],
+            Estimates(("Known", 30)),
+            project => priority.GetValueOrDefault(project.AssemblyName, int.MaxValue)
+        );
+
+        await Assert.That(Describe(queue)).IsEqualTo("Long=?, Longer=?, Medium=?, A=?, Known=30");
+    }
+
+    [Test]
+    public async Task Keeps_each_frameworks_history_and_results_apart()
+    {
+        var project = Project("Multi", "net10.0", "net11.0");
+        var queue = TestQueue.Order([new TestTarget(project, "net11.0"), new(project, "net10.0")], Estimates(("Multi [net11.0]", 90), ("Multi", 200)));
+
+        await Assert.That(Describe(queue)).IsEqualTo("Multi [net10.0]=?, Multi [net11.0]=90");
+        await Assert.That(queue[1].ResultsFolder).IsEqualTo(Path.Combine("Multi", "net11.0"));
+        await Assert.That(queue[1].EffectiveFramework).IsEqualTo("net11.0");
+        await Assert.That(new TestQueueEntry(Project("Single", "net11.0"), "Single", null).EffectiveFramework).IsEqualTo("net11.0");
+        await Assert.That(new TestQueueEntry(project, "Multi", null).EffectiveFramework).IsNull();
+    }
+
+    [Test]
+    public async Task Reads_the_framework_coverage_order_and_shard_settings()
+    {
+        var configuration = new ConfigurationBuilder()
+                           .AddInMemoryCollection(
+                                [
+                                    new("TestPerFramework", "false"),
+                                    new("TestFrameworks:0", "net11.0"),
+                                    new("CoverageFrameworks:0", "net11.0"),
+                                    new("TestOrder:0", "test/Slow/**"),
+                                    new("TestShard", "2/3"),
+                                ]
+                            )
+                           .Build();
+        var settings = new TestSettings(null!, null!, configuration);
+        var defaults = new TestSettings(null!, null!, new ConfigurationBuilder().Build());
+
+        await Assert.That(settings.PerFramework).IsFalse();
+        await Assert.That(settings.Frameworks).IsEquivalentTo(["net11.0"]);
+        await Assert.That(settings.CoverageFrameworks).IsEquivalentTo(["net11.0"]);
+        await Assert.That(settings.Order).IsEquivalentTo(["test/Slow/**"]);
+        await Assert.That(settings.Shard).IsEqualTo(new TestShard(2, 3));
+        await Assert.That(defaults.PerFramework).IsTrue();
+        await Assert.That(defaults.Frameworks).IsEmpty();
+        await Assert.That(defaults.Shard).IsNull();
+    }
+
+    private static string Describe(IEnumerable<TestTarget> targets) =>
+        string.Join(", ", targets.Select(target => TestQueue.GetName(target.Project, target.Framework)));
+
     private static string Describe(IEnumerable<TestQueueEntry> queue) =>
         string.Join(", ", queue.Select(entry => $"{entry.Name}={( entry.Estimate is { } estimate ? estimate.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture) : "?" )}"));
 
-    private static SolutionProjectsModule.Project Project(string name) =>
-        new(new($"/repo/test/{name}/{name}.csproj"), name, true);
+    private static SolutionProjectsModule.Project Project(string name, params string[] frameworks) =>
+        new(new($"/repo/test/{name}/{name}.csproj"), name, true, [.. frameworks]);
 
     private static Dictionary<string, TimeSpan> Estimates(params (string Name, int Seconds)[] estimates) =>
         estimates.ToDictionary(z => z.Name, z => TimeSpan.FromSeconds(z.Seconds));

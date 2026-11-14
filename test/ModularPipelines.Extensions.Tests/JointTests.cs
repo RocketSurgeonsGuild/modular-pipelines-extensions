@@ -12,6 +12,7 @@ public class JointTests
     private static readonly Type[] LibraryModules =
     [
         typeof(BuildSolution),
+        typeof(CopyCoverageBadgesModule),
         typeof(DocsModule),
         typeof(DownloadPackageIconModule),
         typeof(GenerateCodeCoverageReportsModule),

@@ -61,6 +61,15 @@ resolved against the current directory.
 `ConfigureDovetail(z => z.Set<ModuleDelegate>(type => type != typeof(DocsModule)))`, or leave the `ModulesJoint` out with
 `z.ExceptJoint(typeof(ModulesJoint))` and add the modules yourself. ModularPipelines' own `--skip-module` still works at run time.
 
+**MP0013.** ModularPipelines' analyzer warns (MP0013) about a module it does not see registered, and it cannot see the modules
+`ModulesJoint` adds. The package turns MP0013 off for the projects that reference it, through a `.globalconfig` at the lowest level,
+so a consumer's own `.globalconfig` or `.editorconfig` can turn it back on.
+
+**Dependency cleanup.** `RemoveUnusedDependenciesModule` removes `PackageVersion` entries that no project or `#:package` directive
+references, and `PackageReference` entries a `GlobalPackageReference` covers. It rewrites the repository's files on a local build, and a
+version that only pins a transitive package looks unused to it, so it is off unless `RemoveUnusedDependencies: true` is set. It never
+runs on CI, and the files keep their encoding, byte-order mark and XML declaration.
+
 A host that builds the pipeline itself can apply the same joints with
 `builder.AddPlugin(new DovetailPipelinePlugin(DovetailContextBuilder.Create()))`.
 
@@ -135,12 +144,41 @@ longest. The log shows the order, whether there is a fast lane, each project's e
 ```yaml
 EnableTests: true
 TestMode: PerProject # or Solution: one dotnet test over the solution
-TestParallelism: 4 # test projects at once; half the processors by default
+TestParallelism: 4 # test projects at once; the processor count by default
+ExcludeTests: # globs relative to the root: built and packed, but left out of the test run
+    - test/Slow.Tests/**
 ```
 
+`ExcludeTests` keeps suites a workflow runs in jobs of their own out of the pipeline's test run, in either mode (`Solution` runs a
+solution filter without them). A pattern that matches no project is logged as a warning. From the environment, it is
+`ExcludeTests__0=test/Slow.Tests/**`.
+
+A multi-targeted test project runs one sub module per target framework (`dotnet test --framework`), named `<assembly> [<framework>]`,
+each with its own history, slot and results folder (`artifacts/logs/tests/<assembly>/<framework>`), so the long framework starts first
+and `TestParallelism` counts test hosts rather than projects. The rest of the settings spread or trim the run:
+
+```yaml
+TestPerFramework: true # false runs every framework of a project in one dotnet test
+TestFrameworks: [net11.0] # only these frameworks; a project targeting none of them is left out
+CoverageFrameworks: [net11.0] # only these collect coverage; one framework's coverage is usually enough
+TestOrder: # start these first while they have no previous run, such as on a first run or a new project
+    - test/Sdk.Tests/**
+TestShard: 1/2 # this job's part of the run; every sub module goes to one part by its place in path order
+```
+
+`TestShard` splits without history, so jobs that restore different history still agree on the split. Give each shard its own run history
+cache key (for example `modularpipelines-${{ github.workflow }}-main-shard-1-...`), since each saves only its own sub modules. The log
+shows each sub module as it starts (with its estimate) and ends, and a table of all of them, longest first; on GitHub Actions that
+table also goes to the job summary.
+
+`SolutionProjectsModule` tells `TestSolutionModule` which projects are test projects, what their assemblies are called and which frameworks they target. It evaluates
+every project of the solution in one MSBuild process, alongside the build, and is skipped in `Solution` mode, which does not need it.
+The fast lane is only used once more projects than slots have a previous run: without history, both estimates are zero and say nothing.
+
 `GenerateCodeCoverageReportsModule` turns the cobertura files `TestSolutionModule` collects into an HTML report, summaries and SVG
-coverage badges, all under `artifacts/logs/coverage`. When `DocsModule` is in the pipeline, it copies those badges into the published
-docs site under `coverage-badges/`, so a docs page can reference them (for example `![coverage](coverage-badges/badge_combined.svg)`)
+coverage badges, all under `artifacts/logs/coverage`. `DocsModule` builds the docs as soon as the solution is built, alongside the
+tests; when both are in the pipeline, `CopyCoverageBadgesModule` then copies the badges into the published docs site under
+`coverage-badges/`, so a docs page can reference them (for example `![coverage](coverage-badges/badge_combined.svg)`)
 and they end up on GitHub Pages alongside the rest of the docs.
 
 | Package                                    | NuGet                                                                                     |

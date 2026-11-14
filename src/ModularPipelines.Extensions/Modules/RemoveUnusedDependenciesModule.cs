@@ -1,15 +1,27 @@
 using System.Collections.Immutable;
+using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using GitignoreParserNet;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
-public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSettings) : Module<RemoveUnusedDependenciesModule.Result>
+/// <summary>
+///     Removes <c>PackageVersion</c> entries no project or file-based app references, and <c>PackageReference</c> entries a
+///     <c>GlobalPackageReference</c> already covers. Opt in with <c>RemoveUnusedDependencies: true</c>; it never runs on CI.
+/// </summary>
+/// <remarks>
+///     Off by default: it rewrites the repository's project files on every local build, and a version that only pins a transitive
+///     package (central transitive pinning) looks unused to it. The files keep their encoding, byte-order mark and XML declaration.
+/// </remarks>
+public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSettings, IConfiguration configuration) : Module<RemoveUnusedDependenciesModule.Result>
 {
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
-        _ => SkipDecision.When(IsOnCI(),
-            "Only runs on local builds")
+        _ => !configuration.GetValue("RemoveUnusedDependencies", false)
+            ? SkipDecision.Skip("Not enabled; set RemoveUnusedDependencies: true to run it")
+            : SkipDecision.When(IsOnCI(), "Only runs on local builds")
     );
 
     private static bool IsOnCI() =>
@@ -35,7 +47,8 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
         var codePackageReferences = listedFiles.Where(f => f.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             .SelectMany(z => File.ReadAllLines(z.Path)
             .Where(z => z.StartsWith("#:package "))
-            .Select(l => l["#:package ".Length..].Trim())
+            // #:package Name@Version: only the name is what a PackageVersion lists.
+            .Select(l => l["#:package ".Length..].Trim().Split('@', 2)[0].Trim())
         ).ToHashSet(StringComparer.OrdinalIgnoreCase)!;
 
         LogFoundCodePackageReferences(context.Logger, codePackageReferences.Count);
@@ -93,11 +106,35 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
             }
 
             if (modified)
-                doc.Save(path, SaveOptions.None);
+                Save(doc, path);
         }
 
         LogRemovedUnusedDuplicateEntries(context.Logger, removed, projectFiles.Count);
         return new(removed, projectFiles.Count);
+    }
+
+    /// <summary>Writes the document back the way it was read: with or without a byte-order mark and an XML declaration.</summary>
+    private static void Save(XDocument document, FilePath path)
+    {
+        var preamble = Encoding.UTF8.GetPreamble();
+        var bytes = File.ReadAllBytes(path.Path);
+        var hadByteOrderMark = bytes.AsSpan().StartsWith(preamble);
+        var settings = new XmlWriterSettings
+        {
+            Encoding = new UTF8Encoding(hadByteOrderMark),
+            OmitXmlDeclaration = document.Declaration is null,
+            Indent = false,
+        };
+        using (var writer = XmlWriter.Create(path.Path, settings))
+        {
+            document.Save(writer);
+        }
+
+        // XmlWriter drops the final newline the file ended with.
+        if (bytes.Length > 0 && bytes[^1] == (byte)'\n')
+        {
+            File.AppendAllText(path.Path, bytes.Length > 1 && bytes[^2] == (byte)'\r' ? "\r\n" : "\n");
+        }
     }
 
     public record Result(int EntriesRemoved, int FilesScanned);

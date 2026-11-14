@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text.Json;
+using Humanizer;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.SolutionPersistence.Serializer;
 using ModularPipelines.Exceptions;
@@ -19,7 +20,6 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 [DependsOn<SolutionProjectsModule>]
 public partial class TestSolutionModule
 (
-    SharedSettings sharedSettings,
     ArtifactSettings artifactSettings,
     TestSettings testSettings,
     SolutionSettings settings = null!,
@@ -56,11 +56,29 @@ public partial class TestSolutionModule
     private async Task<Result> RunProjectsAsync(IModuleContext context, FilePath binlog, CancellationToken cancellationToken)
     {
         var projects = ( await context.GetModule<SolutionProjectsModule>() ).ValueOrDefault ?? [];
+        var testProjects = projects.Where(project => project.IsTestProject).ToArray();
+        WarnAboutUnmatchedPatterns(context, testProjects.Select(project => testSettings.GetRootRelativePath(project.ProjectPath)));
+        var excluded = testProjects.Where(project => testSettings.IsExcluded(project.ProjectPath)).ToArray();
+        if (excluded.Length > 0 && context.Logger.IsEnabled(LogLevel.Information))
+        {
+            LogExcluding(context.Logger, excluded.Length, string.Join(", ", excluded.Select(project => testSettings.GetRootRelativePath(project.ProjectPath))));
+        }
+
+        var targets = TestQueue.InShard(
+                                   TestQueue.Expand(testProjects.Except(excluded), testSettings.PerFramework, testSettings.Frameworks),
+                                   testSettings.Shard
+                               )
+                              .ToArray();
+        if (testSettings.Shard is { } shard && context.Logger.IsEnabled(LogLevel.Information))
+        {
+            LogShard(context.Logger, shard.ToString(), targets.Length);
+        }
 
         var moduleId = ModuleId.FromType(GetType());
         var queue = TestQueue.Order(
-            projects.Where(project => project.IsTestProject),
-            await GetEstimatesAsync(context, moduleId, cancellationToken)
+            targets,
+            await GetEstimatesAsync(context, moduleId, cancellationToken),
+            OrderPriority
         );
         var fastLane = TestQueue.UsesFastLane(queue, testSettings.Parallelism);
         if (context.Logger.IsEnabled(LogLevel.Information))
@@ -85,7 +103,57 @@ public partial class TestSolutionModule
                 )
         );
 
-        return new(null, FindTrxFiles(testSettings.TestArtifactsDirectory), binlog, [.. outcomes.OrderBy(outcome => outcome.Name, StringComparer.Ordinal)]);
+        ImmutableList<ProjectResult> results = [.. outcomes.OrderBy(outcome => outcome.Name, StringComparer.Ordinal)];
+        await WriteSummaryAsync(context, results, cancellationToken);
+        return new(null, FindTrxFiles(testSettings.TestArtifactsDirectory), binlog, results);
+    }
+
+    /// <summary>
+    ///     Logs how long each test sub module took against its estimate, longest first, and adds the table to the GitHub Actions job summary
+    ///     when there is one: ModularPipelines' own summary lists modules, not sub modules.
+    /// </summary>
+    private static async Task WriteSummaryAsync(IModuleContext context, IReadOnlyCollection<ProjectResult> results, CancellationToken cancellationToken)
+    {
+        if (results.Count == 0) return;
+
+        var rows = results
+                  .OrderByDescending(result => result.Duration ?? TimeSpan.Zero)
+                  .Select(result => (
+                              result.Name,
+                              Outcome: result.Error is null ? "passed" : "failed",
+                              Duration: result.Duration is { } duration ? duration.Humanize(2) : "-",
+                              Estimate: result.Estimate is { } estimate ? estimate.Humanize(2) : "-"
+                          )
+                   )
+                  .ToArray();
+        if (context.Logger.IsEnabled(LogLevel.Information))
+        {
+            LogSummary(
+                context.Logger,
+                string.Join(Environment.NewLine, rows.Select(row => $"  {row.Name}: {row.Outcome} in {row.Duration} (estimated {row.Estimate})"))
+            );
+        }
+
+        if (Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY") is not { Length: > 0 } summaryFile) return;
+
+        var markdown = new System.Text.StringBuilder()
+                      .AppendLine("### Test projects")
+                      .AppendLine()
+                      .AppendLine("| Project | Outcome | Duration | Estimate |")
+                      .AppendLine("| --- | --- | --- | --- |");
+        foreach (var (Name, Outcome, Duration, Estimate) in rows)
+        {
+            markdown.AppendLine($"| {Name} | {Outcome} | {Duration} | {Estimate} |");
+        }
+
+        try
+        {
+            await File.AppendAllTextAsync(summaryFile, markdown.AppendLine().ToString(), cancellationToken);
+        }
+        catch (IOException ex)
+        {
+            context.Logger.LogWarning(ex, "Could not write the test projects to the job summary");
+        }
     }
 
     private async Task RunSlotAsync(
@@ -113,28 +181,41 @@ public partial class TestSolutionModule
     )]
     private async Task<ProjectResult> RunProjectAsync(IModuleContext context, ModuleId moduleId, TestQueueEntry entry, CancellationToken cancellationToken)
     {
-        var resultsDirectory = testSettings.TestArtifactsDirectory.GetFolder(entry.Name);
+        var resultsDirectory = testSettings.TestArtifactsDirectory.GetFolder(entry.ResultsFolder);
         var started = Stopwatch.GetTimestamp();
+        LogStarting(context.Logger, entry.Name, entry.Estimate is { } estimate ? estimate.Humanize(2) : "no previous run");
         try
         {
             var commandResult = await context.RunSubModuleAsync(
                 entry.Name,
-                token => context.Tools.DotNet.TestAsync(CreateOptions(resultsDirectory) with { Project = entry.Project.ProjectPath.Path }, new(), token),
+                token => context.Tools.DotNet.TestAsync(
+                    CreateOptions(resultsDirectory, Collects(entry.EffectiveFramework)) with
+                    {
+                        Project = entry.Project.ProjectPath.Path,
+                        Framework = entry.Framework,
+                    },
+                    new(),
+                    token
+                ),
                 cancellationToken
             );
-            return new(entry.Name, entry.Project.ProjectPath, resultsDirectory, commandResult, null);
+            var elapsed = Stopwatch.GetElapsedTime(started);
+            LogFinished(context.Logger, entry.Name, "passed", elapsed.Humanize(2));
+            return new(entry.Name, entry.Project.ProjectPath, resultsDirectory, commandResult, null, elapsed, entry.Estimate);
         }
         // One failing project must not stop the others; the module fails once they all finished.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             // ModularPipelines keeps the duration of a sub module that succeeded only, but a failed run took its time as well, and the
             // next run's order should know it.
+            var elapsed = Stopwatch.GetElapsedTime(started);
             if (estimates is { })
             {
-                await estimates.SaveSubModuleTimeAsync(moduleId, new(entry.Name, Stopwatch.GetElapsedTime(started)), cancellationToken);
+                await estimates.SaveSubModuleTimeAsync(moduleId, new(entry.Name, elapsed), cancellationToken);
             }
 
-            return new(entry.Name, entry.Project.ProjectPath, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message));
+            LogFinished(context.Logger, entry.Name, "failed", elapsed.Humanize(2));
+            return new(entry.Name, entry.Project.ProjectPath, resultsDirectory, ( ex as CommandException )?.Result, FirstLine(ex.Message), elapsed, entry.Estimate);
         }
     }
 
@@ -158,9 +239,15 @@ public partial class TestSolutionModule
     private async Task<Result> RunSolutionAsync(IModuleContext context, FilePath binlog, CancellationToken cancellationToken)
     {
         var solution = await SolutionToTest(context, cancellationToken);
+        // One dotnet test over the solution can only choose one framework; per-framework and per-shard runs need PerProject mode.
+        var framework = testSettings.Frameworks is [var only] ? only : null;
         try
         {
-            var commandResult = await context.Tools.DotNet.TestAsync(CreateOptions(testSettings.TestArtifactsDirectory) with { Solution = solution }, new(), cancellationToken);
+            var commandResult = await context.Tools.DotNet.TestAsync(
+                CreateOptions(testSettings.TestArtifactsDirectory, Collects(framework)) with { Solution = solution, Framework = framework },
+                new(),
+                cancellationToken
+            );
             return new(
                 commandResult,
                 FindTrxFiles(testSettings.TestArtifactsDirectory),
@@ -180,7 +267,25 @@ public partial class TestSolutionModule
         }
     }
 
-    private DotNetTestOptions CreateOptions(FolderPath resultsDirectory) =>
+    /// <summary>Whether a run of <paramref name="framework" /> collects coverage: one of <see cref="TestSettings.CoverageFrameworks" />, or any when none are named or the run covers several frameworks.</summary>
+    private bool Collects(string? framework) =>
+        framework is null
+     || testSettings.CoverageFrameworks.Count == 0
+     || testSettings.CoverageFrameworks.Contains(framework, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Where a test project without history goes among the others with none: by the first <see cref="TestSettings.Order" /> pattern it matches.</summary>
+    private int OrderPriority(SolutionProjectsModule.Project project)
+    {
+        var path = testSettings.GetRootRelativePath(project.ProjectPath);
+        for (var index = 0; index < testSettings.Order.Count; index++)
+        {
+            if (TestSettings.Matches(testSettings.Order[index], path)) return index;
+        }
+
+        return int.MaxValue;
+    }
+
+    private DotNetTestOptions CreateOptions(FolderPath resultsDirectory, bool coverage) =>
         new()
         {
             Configuration = settings.Configuration,
@@ -189,9 +294,7 @@ public partial class TestSolutionModule
             ResultsDirectory = resultsDirectory,
             Arguments =
             [
-                "--coverage",
-                "--coverage-settings", testSettings.RunSettings,
-                "--coverage-output-format", "cobertura",
+                .. coverage ? (string[])["--coverage", "--coverage-settings", testSettings.RunSettings, "--coverage-output-format", "cobertura"] : [],
                 // One TRX per test application, under its default name: a single --report-trx-filename made every
                 // assembly (and target framework) write the same file, so only the last one's results were kept.
                 "--report-trx",
@@ -231,18 +334,35 @@ public partial class TestSolutionModule
     /// </summary>
     private async Task<FilePath> SolutionToTest(IModuleContext context, CancellationToken cancellationToken)
     {
+        if (testSettings.ExcludeTests.Count == 0) return settings.Solution;
+
         var serializer = SolutionSerializers.GetSerializerByMoniker(settings.Solution.Path)
          ?? throw new InvalidOperationException($"Not a solution file: {settings.Solution.Path}");
         var model = await serializer.OpenAsync(settings.Solution.Path, cancellationToken);
         var solutionDirectory = Path.GetDirectoryName(settings.Solution.Path)!;
 
         var included = new List<string>();
+        var excluded = new List<string>();
+        var all = new List<string>();
         foreach (var project in model.SolutionProjects)
         {
             // the path relative to the solution is what a solution filter lists; the patterns are relative to the root directory
             var projectPath = project.FilePath.Replace('\\', '/');
-            var fromRoot = Path.GetRelativePath(sharedSettings.RootDirectory.Path, Path.GetFullPath(Path.Combine(solutionDirectory, projectPath))).Replace('\\', '/');
+            var fullPath = new FilePath(Path.GetFullPath(Path.Combine(solutionDirectory, projectPath)));
+            all.Add(testSettings.GetRootRelativePath(fullPath));
+            if (testSettings.IsExcluded(fullPath))
+            {
+                excluded.Add(testSettings.GetRootRelativePath(fullPath));
+                continue;
+            }
+
             included.Add(projectPath);
+        }
+
+        WarnAboutUnmatchedPatterns(context, all);
+        if (excluded.Count > 0 && context.Logger.IsEnabled(LogLevel.Information))
+        {
+            LogExcluding(context.Logger, excluded.Count, string.Join(", ", excluded));
         }
 
         var filter = testSettings.TestArtifactsDirectory.GetFile($"{Path.GetFileNameWithoutExtension(settings.Solution.Name)}.tests.slnf");
@@ -279,7 +399,44 @@ public partial class TestSolutionModule
     /// <param name="ResultsDirectory">Where its TRX and coverage files are.</param>
     /// <param name="CommandResult">The command's result, when it ran.</param>
     /// <param name="Error">Why it failed, or <see langword="null" />.</param>
-    public record ProjectResult(string Name, FilePath Project, FolderPath ResultsDirectory, CommandResult? CommandResult, string? Error);
+    /// <param name="Duration">How long it took, when it ran as a sub module.</param>
+    /// <param name="Estimate">What its history said it would take.</param>
+    public record ProjectResult(
+        string Name,
+        FilePath Project,
+        FolderPath ResultsDirectory,
+        CommandResult? CommandResult,
+        string? Error,
+        TimeSpan? Duration = null,
+        TimeSpan? Estimate = null
+    );
+
+    private void WarnAboutUnmatchedPatterns(IModuleContext context, IEnumerable<string> rootRelativePaths)
+    {
+        var paths = rootRelativePaths.ToArray();
+        foreach (var pattern in testSettings.ExcludeTests.Where(pattern => !paths.Any(path => TestSettings.Matches(pattern, path))))
+        {
+            LogUnmatchedPattern(context.Logger, pattern);
+        }
+    }
+
+    [LoggerMessage(LogLevel.Information, "Leaving {Count} test projects out of the test run: {Projects}")]
+    static partial void LogExcluding(ILogger logger, int count, string projects);
+
+    [LoggerMessage(LogLevel.Warning, "ExcludeTests pattern {Pattern} matches no project in the solution")]
+    static partial void LogUnmatchedPattern(ILogger logger, string pattern);
+
+    [LoggerMessage(LogLevel.Information, "Test shard {Shard}: {Count} test sub modules")]
+    static partial void LogShard(ILogger logger, string shard, int count);
+
+    [LoggerMessage(LogLevel.Information, "▶ {Name} ({Estimate})")]
+    static partial void LogStarting(ILogger logger, string name, string estimate);
+
+    [LoggerMessage(LogLevel.Information, "■ {Name} {Outcome} in {Duration}")]
+    static partial void LogFinished(ILogger logger, string name, string outcome, string duration);
+
+    [LoggerMessage(LogLevel.Information, "Test projects, longest first:\n{Summary}")]
+    static partial void LogSummary(ILogger logger, string summary);
 
     [LoggerMessage(LogLevel.Information, "Running {Queue}")]
     static partial void LogRunningQueue(ILogger logger, string queue);

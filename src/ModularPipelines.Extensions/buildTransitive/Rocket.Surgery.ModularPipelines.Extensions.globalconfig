@@ -1,0 +1,5 @@
+is_global = true
+global_level = -1
+
+# ModulesJoint adds every module of the build host through Specular, so a module is registered without a call MP0013 recognizes.
+dotnet_diagnostic.MP0013.severity = none

@@ -30,6 +30,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="default.runsettings" />
+        <None Include="buildTransitive/**" Pack="true" PackagePath="buildTransitive/" />
         <Using Include="ModularPipelines" />
         <Using Include="ModularPipelines.Attributes" />
         <Using Include="ModularPipelines.Context" />

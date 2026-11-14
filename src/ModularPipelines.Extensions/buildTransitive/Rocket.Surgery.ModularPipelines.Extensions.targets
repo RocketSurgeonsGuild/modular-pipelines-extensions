@@ -1,0 +1,20 @@
+<Project>
+    <!--
+        The ModularPipelines host for a build host that references only this package. Joinery.Dovetail.ModularPipelines declares it in
+        its build/ folder, which NuGet applies to direct references only; without it Joinery.Dovetail's generator writes no
+        ConfigureDovetail(). A build host that still references Joinery.Dovetail.ModularPipelines gets the package's own declaration
+        instead, so the host is declared once either way. The item matches Joinery.Dovetail.ModularPipelines 0.5.x.
+    -->
+    <ItemGroup
+        Condition="'$(ImportDovetailAssembly)' == 'true' and '$(DovetailModularPipelinesHost)' != 'false' and @(PackageReference->AnyHaveMetadataValue('Identity', 'Joinery.Dovetail.ModularPipelines')) != 'true' and @(DovetailHost->AnyHaveMetadataValue('Identity', 'ModularPipelines')) != 'true'"
+    >
+        <DovetailHost
+            Include="ModularPipelines"
+            HostBuilderType="global::ModularPipelines.PipelineBuilder"
+            HostBuilderName="builder"
+            HostType="global::ModularPipelines.IPipeline"
+            HelperName="global::Joinery.Dovetail.DovetailPipelineHelpers"
+            HasBuildExpression="false"
+        />
+    </ItemGroup>
+</Project>

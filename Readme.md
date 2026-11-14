@@ -153,7 +153,25 @@ ExcludeTests: # globs relative to the root: built and packed, but left out of th
 solution filter without them). A pattern that matches no project is logged as a warning. From the environment, it is
 `ExcludeTests__0=test/Slow.Tests/**`.
 
-`SolutionProjectsModule` tells `TestSolutionModule` which projects are test projects and what their assemblies are called. It evaluates
+A multi-targeted test project runs one sub module per target framework (`dotnet test --framework`), named `<assembly> [<framework>]`,
+each with its own history, slot and results folder (`artifacts/logs/tests/<assembly>/<framework>`), so the long framework starts first
+and `TestParallelism` counts test hosts rather than projects. The rest of the settings spread or trim the run:
+
+```yaml
+TestPerFramework: true # false runs every framework of a project in one dotnet test
+TestFrameworks: [net11.0] # only these frameworks; a project targeting none of them is left out
+CoverageFrameworks: [net11.0] # only these collect coverage; one framework's coverage is usually enough
+TestOrder: # start these first while they have no previous run, such as on a first run or a new project
+    - test/Sdk.Tests/**
+TestShard: 1/2 # this job's part of the run; every sub module goes to one part by its place in path order
+```
+
+`TestShard` splits without history, so jobs that restore different history still agree on the split. Give each shard its own run history
+cache key (for example `modularpipelines-${{ github.workflow }}-main-shard-1-...`), since each saves only its own sub modules. The log
+shows each sub module as it starts (with its estimate) and ends, and a table of all of them, longest first; on GitHub Actions that
+table also goes to the job summary.
+
+`SolutionProjectsModule` tells `TestSolutionModule` which projects are test projects, what their assemblies are called and which frameworks they target. It evaluates
 every project of the solution in one MSBuild process, alongside the build, and is skipped in `Solution` mode, which does not need it.
 The fast lane is only used once more projects than slots have a previous run: without history, both estimates are zero and say nothing.
 

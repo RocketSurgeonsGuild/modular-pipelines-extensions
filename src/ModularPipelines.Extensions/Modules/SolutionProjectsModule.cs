@@ -23,8 +23,8 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///         minute or more of processor time beside the solution build on a 4-core CI runner.
 ///     </para>
 ///     <para>
-///         Only <see cref="TestSolutionModule" /> in <see cref="TestMode.PerProject" /> mode reads the list, so the module is skipped when
-///         tests are disabled or run over the solution.
+///         Only <see cref="TestSolutionModule" /> in <see cref="TestMode.PerProject" /> mode reads the list, so otherwise the module
+///         returns an empty list without evaluating anything.
 ///     </para>
 /// </remarks>
 [DependsOn<RestoreSolutionModule>]
@@ -46,16 +46,21 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
         public ImmutableArray<string> Frameworks => TargetFrameworks.IsDefault ? [] : TargetFrameworks;
     }
 
-    protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(_ => settings is null
-        ? SkipDecision.Skip("No solution was provided")
-        : SkipDecision.When(
-            !testSettings.IsEnabled || testSettings.Mode != TestMode.PerProject,
-            "Only the per-project test run reads the solution's projects"
-        )
-    );
+    // Skipped only when TestSolutionModule is skipped too: a module whose required dependency was skipped is skipped as well, so
+    // skipping this one in Solution mode skipped the whole test run (and coverage) with the pipeline still green.
+    protected override void Configure(ModuleConfigurationBuilder module) =>
+        module.WithSkipWhen(_ => SkipDecision.When(settings is null, "No solution was provided"));
+
+    /// <summary>
+    ///     Whether the test run reads the projects: only <see cref="TestMode.PerProject" /> mode does. Otherwise the module returns no
+    ///     projects without evaluating any, rather than being skipped, which would skip <see cref="TestSolutionModule" /> with it.
+    /// </summary>
+    internal static bool IsNeeded(TestSettings testSettings) => testSettings.IsEnabled && testSettings.Mode == TestMode.PerProject;
 
     protected override async Task<ImmutableList<Project>> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
+        if (!IsNeeded(testSettings)) return [];
+
         var solution = settings.Solution;
         var serializer = SolutionSerializers.GetSerializerByMoniker(solution)
          ?? throw new InvalidOperationException($"Not a solution file: {solution}");

@@ -9,7 +9,7 @@
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <!-- Tags every package shares; each project appends its own with $(PackageTags);... -->
-        <PackageTags>rocket-surgery;rocket-surgeons-guild;build-tools</PackageTags>
+        <PackageTags>rocket-surgery;build-tools</PackageTags>
         <LangVersion>preview</LangVersion>
         <Features>strict</Features>
         <Nullable>enable</Nullable>

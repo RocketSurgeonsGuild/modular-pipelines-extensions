@@ -4,6 +4,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
+        <Description>ModularPipelines modules that restore, version with GitVersion, build, test with coverage, pack, ship public API files and build the docs of a .NET solution, added to a build host by Dovetail joints, with run history kept in the repository.</Description>
         <PackageTags>$(PackageTags);modularpipelines;modular-pipelines;pipeline;build-automation;build-pipeline;ci;dotnet-test;code-coverage;reportgenerator;gitversion;mise;dovetail;specular</PackageTags>
         <!-- RunHistoryJoint binds the History section while the pipeline is set up; the generator keeps that bind reflection free. -->
         <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>

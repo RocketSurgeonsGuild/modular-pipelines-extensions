@@ -4,6 +4,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
+        <PackageTags>$(PackageTags);modularpipelines;modular-pipelines;pipeline;build-automation;build-pipeline;ci;dotnet-test;code-coverage;reportgenerator;gitversion;mise;dovetail;specular</PackageTags>
         <!-- RunHistoryJoint binds the History section while the pipeline is set up; the generator keeps that bind reflection free. -->
         <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     </PropertyGroup>

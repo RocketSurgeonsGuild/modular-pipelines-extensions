@@ -4,9 +4,7 @@
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     </PropertyGroup>
     <ItemGroup>
-        <GlobalPackageReference Include="Rocket.Surgery.AssemblyInfo" Version="2026.11.2" />
-        <GlobalPackageReference Include="ZeroAlloc.Analyzers" Version="1.13.1" />
-        <GlobalPackageReference Include="JetBrains.ExternalAnnotations" Version="10.2.172" />
+        <GlobalPackageReference Include="Rocket.Surgery.AssemblyInfo" Version="2026.11.5" />
     </ItemGroup>
     <ItemGroup>
         <PackageVersion Include="GitignoreParserNet" Version="0.2.0.15" />
@@ -25,8 +23,8 @@
         <PackageVersion Include="ModularPipelines.Git" Version="4.0.0" />
         <PackageVersion Include="ModelingEvolution.JsonParsableConverter" Version="1.0.1" />
         
-        <PackageVersion Include="Joinery.Dovetail.Configuration.Json" Version="0.5.3" />
-        <PackageVersion Include="Joinery.Dovetail.Configuration.Yaml" Version="0.5.3" />
+        <PackageVersion Include="Joinery.Dovetail.Configuration.Json" Version="0.7.1" />
+        <PackageVersion Include="Joinery.Dovetail.Configuration.Yaml" Version="0.7.1" />
         <PackageVersion Include="Joinery.Dovetail.ModularPipelines" Version="0.7.1" />
         <PackageVersion Include="Specular" Version="0.4.1" />
         <PackageVersion Include="TUnit" Version="1.86.6" />

@@ -1,4 +1,5 @@
-using Joinery.Dovetail.Attributes;
+
+using Optionary;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 
@@ -6,7 +7,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.History;
 ///     How <see cref="Joints.RunHistoryJoint" /> keeps run history, duration estimates and the module cache under the repository: the
 ///     <c>History</c> configuration section. Folders are relative to the repository root unless fully qualified.
 /// </summary>
-[DovetailConfiguration("History")]
+[Optionary("History")]
 public sealed class RocketHistoryOptions
 {
     /// <summary>Whether run history is kept. Off, the estimates are the last duration of each module.</summary>

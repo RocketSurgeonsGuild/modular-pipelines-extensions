@@ -19,6 +19,7 @@
         <PackageReference Include="ModularPipelines.DotNet" />
         <PackageReference Include="ModularPipelines.Git" />
         <PackageReference Include="MSBuild.StructuredLogger" />
+        <PackageReference Include="Optionary" />
         <PackageReference Include="Riok.Mapperly" />
         <!--
             Their generators write ConfigureDovetail() and the module scan into the build host, so their analyzers and build files

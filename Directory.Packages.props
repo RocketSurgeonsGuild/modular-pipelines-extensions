@@ -27,7 +27,7 @@
         
         <PackageVersion Include="Joinery.Dovetail.Configuration.Json" Version="0.5.3" />
         <PackageVersion Include="Joinery.Dovetail.Configuration.Yaml" Version="0.5.3" />
-        <PackageVersion Include="Joinery.Dovetail.ModularPipelines" Version="0.5.3" />
+        <PackageVersion Include="Joinery.Dovetail.ModularPipelines" Version="0.7.1" />
         <PackageVersion Include="Specular" Version="0.4.1" />
         <PackageVersion Include="TUnit" Version="1.86.6" />
     </ItemGroup>

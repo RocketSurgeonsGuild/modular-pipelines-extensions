@@ -15,7 +15,7 @@ public class SolutionProjectsTests
                 "Collect": {
                   "Result": "Success",
                   "Items": [
-                    { "Identity": "/repo/src/Lib/Lib.csproj", "AssemblyName": "Rocket.Lib", "IsTestProject": "", "TargetFramework": "net11.0", "TargetFrameworks": "" },
+                    { "Identity": "/repo/src/Lib/Lib.csproj", "AssemblyName": "Rocket.Lib", "IsTestProject": "", "IsPackable": "true", "TargetFramework": "net11.0", "TargetFrameworks": "" },
                     { "Identity": "/repo/test/Multi/Multi.csproj", "AssemblyName": "Multi", "IsTestProject": "", "TargetFramework": "", "TargetFrameworks": "net10.0; net11.0" },
                     { "Identity": "/repo/test/Single/Single.csproj", "AssemblyName": "Single", "IsTestProject": "true", "TargetFramework": "net11.0", "TargetFrameworks": "" }
                   ]
@@ -27,22 +27,40 @@ public class SolutionProjectsTests
         var info = SolutionProjectsModule.Parse(json);
 
         await Assert.That(info.Count).IsEqualTo(3);
-        await Assert.That(info[Path.GetFullPath("/repo/src/Lib/Lib.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Rocket.Lib", "", null, "net11.0"));
+        await Assert.That(info[Path.GetFullPath("/repo/src/Lib/Lib.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Rocket.Lib", "", null, "net11.0", "true"));
         // Only a multi-targeted project's outer build needs asking again, with its first framework chosen.
         await Assert.That(info[Path.GetFullPath("/repo/test/Multi/Multi.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Multi", "", "net10.0", "net10.0;net11.0"));
         await Assert.That(info[Path.GetFullPath("/repo/test/Single/Single.csproj")]).IsEqualTo(new SolutionProjectsModule.ProjectInfo("Single", "true", null, "net11.0"));
     }
 
     [Test]
-    [Arguments("PerProject", "true", true)]
-    [Arguments("Solution", "true", false)]
-    [Arguments("PerProject", "false", false)]
-    public async Task Evaluates_the_projects_only_for_a_per_project_test_run(string mode, string enabled, bool needed)
+    public async Task Packs_only_packable_projects_that_are_not_tests_in_path_order()
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection([new("TestMode", mode), new("EnableTests", enabled)]).Build();
+        SolutionProjectsModule.Project[] projects =
+        [
+            new(new("/repo/src/Zed/Zed.csproj"), "Zed", false, IsPackable: true),
+            new(new("/repo/test/Lib.Tests/Lib.Tests.csproj"), "Lib.Tests", true, IsPackable: true),
+            new(new("/repo/sample/App/App.csproj"), "App", false),
+            new(new("/repo/src/Lib/Lib.csproj"), "Lib", false, IsPackable: true),
+        ];
 
-        // Not needed means an empty list, never a skip: a skipped SolutionProjectsModule skips TestSolutionModule, which requires it.
-        await Assert.That(SolutionProjectsModule.IsNeeded(new TestSettings(null!, null!, configuration))).IsEqualTo(needed);
+        var packable = PackSolutionModule.Packable(projects);
+
+        await Assert.That(packable.Select(project => project.AssemblyName)).IsEquivalentTo(["Lib", "Zed"], TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
+    [Arguments(null, null)]
+    [Arguments("3", 3)]
+    [Arguments("0", 1)]
+    public async Task Packs_as_many_projects_at_once_as_configured(string? configured, int? expected)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(configured is null ? [] : [new("PackParallelism", configured)]).Build();
+
+        var parallelism = new SolutionSettings(null!, configuration).PackParallelism;
+
+        // the processor count when none is configured, and never fewer than one
+        await Assert.That(parallelism).IsEqualTo(expected ?? Environment.ProcessorCount);
     }
 
     [Test]

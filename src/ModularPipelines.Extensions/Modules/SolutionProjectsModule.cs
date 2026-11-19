@@ -10,7 +10,8 @@ using ModularPipelines.Options;
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 /// <summary>
-///     Lists the projects of the solution, asking MSBuild for each one's assembly name, target frameworks and whether it is a test project.
+///     Lists the projects of the solution, asking MSBuild for each one's assembly name, target frameworks and whether it is a test project
+///     or packable.
 ///     Depends on <see cref="RestoreSolutionModule" />, since a project's packages (including its test SDK, which sets
 ///     <see cref="Project.IsTestProject" />) must be restored before MSBuild can evaluate it.
 /// </summary>
@@ -23,12 +24,12 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///         minute or more of processor time beside the solution build on a 4-core CI runner.
 ///     </para>
 ///     <para>
-///         Only <see cref="TestSolutionModule" /> in <see cref="TestMode.PerProject" /> mode reads the list, so otherwise the module
-///         returns an empty list without evaluating anything.
+///         <see cref="PackSolutionModule" /> reads the packable projects, and <see cref="TestSolutionModule" /> in
+///         <see cref="TestMode.PerProject" /> mode the test projects.
 ///     </para>
 /// </remarks>
 [DependsOn<RestoreSolutionModule>]
-public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestSettings testSettings, SolutionSettings settings = null!)
+public partial class SolutionProjectsModule(SharedSettings sharedSettings, SolutionSettings settings = null!)
     : Module<ImmutableList<SolutionProjectsModule.Project>>
 {
     private const int Attempts = 2;
@@ -40,27 +41,26 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
     /// <param name="AssemblyName">The assembly it builds.</param>
     /// <param name="IsTestProject">Whether it is a test project.</param>
     /// <param name="TargetFrameworks">The frameworks it targets, in the order it lists them; empty when MSBuild did not say.</param>
-    public record Project(FilePath ProjectPath, string AssemblyName, bool IsTestProject, ImmutableArray<string> TargetFrameworks = default)
+    /// <param name="IsPackable">Whether <c>dotnet pack</c> makes a package of it.</param>
+    public record Project(
+        FilePath ProjectPath,
+        string AssemblyName,
+        bool IsTestProject,
+        ImmutableArray<string> TargetFrameworks = default,
+        bool IsPackable = false
+    )
     {
         /// <summary>The frameworks it targets, never default.</summary>
         public ImmutableArray<string> Frameworks => TargetFrameworks.IsDefault ? [] : TargetFrameworks;
     }
 
-    // Skipped only when TestSolutionModule is skipped too: a module whose required dependency was skipped is skipped as well, so
-    // skipping this one in Solution mode skipped the whole test run (and coverage) with the pipeline still green.
+    // Skipped only without a solution, when the modules that read it are skipped too: a module whose required dependency was skipped is
+    // skipped as well, so skipping this one in Solution mode once skipped the whole test run (and coverage) with the pipeline still green.
     protected override void Configure(ModuleConfigurationBuilder module) =>
         module.WithSkipWhen(_ => SkipDecision.When(settings is null, "No solution was provided"));
 
-    /// <summary>
-    ///     Whether the test run reads the projects: only <see cref="TestMode.PerProject" /> mode does. Otherwise the module returns no
-    ///     projects without evaluating any, rather than being skipped, which would skip <see cref="TestSolutionModule" /> with it.
-    /// </summary>
-    internal static bool IsNeeded(TestSettings testSettings) => testSettings.IsEnabled && testSettings.Mode == TestMode.PerProject;
-
     protected override async Task<ImmutableList<Project>> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
-        if (!IsNeeded(testSettings)) return [];
-
         var solution = settings.Solution;
         var serializer = SolutionSerializers.GetSerializerByMoniker(solution)
          ?? throw new InvalidOperationException($"Not a solution file: {solution}");
@@ -93,7 +93,8 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
                            path,
                            info?.AssemblyName is { Length: > 0 } assemblyName ? assemblyName : path.NameWithoutExtension,
                            IsTrue(info?.IsTestProject),
-                           SplitFrameworks(info?.Frameworks)
+                           SplitFrameworks(info?.Frameworks),
+                           IsTrue(info?.IsPackable)
                        );
                    }
                )
@@ -205,7 +206,8 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
                 Get(item, "IsTestProject"),
                 // Only the outer build of a multi-targeted project lists its frameworks without one chosen.
                 framework is { Length: > 0 } || frameworks is not { Length: > 0 } ? null : all.FirstOrDefault(),
-                string.Join(';', all.AsSpan())
+                string.Join(';', all.AsSpan()),
+                Get(item, "IsPackable")
             );
         }
 
@@ -240,6 +242,7 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
               <_RocketSurgeryProjectInfo Include="$(MSBuildProjectFullPath)"
                                          AssemblyName="$(AssemblyName)"
                                          IsTestProject="$(IsTestProject)"
+                                         IsPackable="$(IsPackable)"
                                          TargetFramework="$(TargetFramework)"
                                          TargetFrameworks="$(TargetFrameworks)" />
             </ItemGroup>
@@ -252,7 +255,8 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, TestS
     /// <param name="IsTestProject">Its <c>IsTestProject</c> property.</param>
     /// <param name="FirstTargetFramework">The first of its target frameworks when it is multi-targeted and none was chosen.</param>
     /// <param name="Frameworks">Every framework it targets, separated by <c>;</c>.</param>
-    internal record ProjectInfo(string? AssemblyName, string? IsTestProject, string? FirstTargetFramework, string Frameworks = "");
+    /// <param name="IsPackable">Its <c>IsPackable</c> property.</param>
+    internal record ProjectInfo(string? AssemblyName, string? IsTestProject, string? FirstTargetFramework, string Frameworks = "", string? IsPackable = null);
 
     [LoggerMessage(LogLevel.Warning, "Evaluating {Count} projects failed, trying once more:\n{Output}")]
     private static partial void LogEvaluationRetrying(ILogger logger, int count, string output);

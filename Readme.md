@@ -178,10 +178,20 @@ cache key (for example `modularpipelines-${{ github.workflow }}-main-shard-1-...
 shows each sub module as it starts (with its estimate) and ends, and a table of all of them, longest first; on GitHub Actions that
 table also goes to the job summary.
 
-`SolutionProjectsModule` tells `TestSolutionModule` which projects are test projects, what their assemblies are called and which frameworks they target. It evaluates
-every project of the solution in one MSBuild process, alongside the build. In `Solution` mode, which does not need the list, it returns an
-empty one without evaluating anything (it is not skipped: that would skip the test run with it).
+`SolutionProjectsModule` tells `TestSolutionModule` which projects are test projects, what their assemblies are called and which
+frameworks they target, and `PackSolutionModule` which projects are packable. It evaluates every project of the solution in one MSBuild
+process, alongside the build.
 The fast lane is only used once more projects than slots have a previous run: without history, both estimates are zero and say nothing.
+
+`PackSolutionModule` packs each packable project that is not a test project into `artifacts/nuget` with a `dotnet pack --no-build` of
+its own, each a sub module named after the project, several at once. A failing project does not stop the others; the module fails at the
+end and lists every project that failed. A process per project also keeps one project's trouble to itself: with an SBOM generated for
+every package, one `dotnet pack` over the solution now and then stalled on a single project until the module timed out, without saying
+which.
+
+```yaml
+PackParallelism: 4 # projects packed at once; the processor count by default
+```
 
 `GenerateCodeCoverageReportsModule` turns the cobertura files `TestSolutionModule` collects into an HTML report, summaries and SVG
 coverage badges, all under `artifacts/logs/coverage`. `DocsModule` builds the docs as soon as the solution is built, alongside the

@@ -22,9 +22,9 @@
     <PackageVersion Include="ModularPipelines.DotNet" Version="4.0.0" />
     <PackageVersion Include="ModularPipelines.Git" Version="4.0.0" />
     <PackageVersion Include="ModelingEvolution.JsonParsableConverter" Version="1.0.1" />
-    <PackageVersion Include="Joinery.Dovetail.Configuration.Json" Version="0.7.1" />
-    <PackageVersion Include="Joinery.Dovetail.Configuration.Yaml" Version="0.7.1" />
-    <PackageVersion Include="Joinery.Dovetail.ModularPipelines" Version="0.7.1" />
+    <PackageVersion Include="Joinery.Dovetail.Configuration.Json" Version="0.8.0" />
+    <PackageVersion Include="Joinery.Dovetail.Configuration.Yaml" Version="0.8.0" />
+    <PackageVersion Include="Joinery.Dovetail.ModularPipelines" Version="0.8.0" />
     <PackageVersion Include="Specular" Version="0.4.1" />
     <PackageVersion Include="TUnit" Version="1.87.0" />
   </ItemGroup>

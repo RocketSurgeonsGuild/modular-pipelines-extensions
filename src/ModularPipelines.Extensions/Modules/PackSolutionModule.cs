@@ -126,14 +126,14 @@ public partial class PackSolutionModule
     public record ProjectResult(string Name, FilePath Project, CommandResult? CommandResult, string? Error);
 
     [LoggerMessage(LogLevel.Information, "Packing {Count} projects, {Parallelism} at once")]
-    static partial void LogPacking(ILogger logger, int count, int parallelism);
+    private static partial void LogPacking(ILogger logger, int count, int parallelism);
 
     [LoggerMessage(LogLevel.Warning, "The solution has no packable project; nothing to pack")]
-    static partial void LogNothingToPack(ILogger logger);
+    private static partial void LogNothingToPack(ILogger logger);
 
     [LoggerMessage(LogLevel.Information, "■ {Name} packed in {Duration}")]
-    static partial void LogPacked(ILogger logger, string name, string duration);
+    private static partial void LogPacked(ILogger logger, string name, string duration);
 
     [LoggerMessage(LogLevel.Warning, "■ {Name} failed to pack after {Duration}")]
-    static partial void LogPackFailed(ILogger logger, string name, string duration);
+    private static partial void LogPackFailed(ILogger logger, string name, string duration);
 }

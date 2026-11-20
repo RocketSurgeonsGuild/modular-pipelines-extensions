@@ -6,12 +6,12 @@ using YamlDotNet.Serialization;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+/// <summary>Regenerates the sections of the readme that <see cref="ReadmeSettings" /> describes, between their marker comments.</summary>
+/// <param name="readmeSettings">The readme and its sections.</param>
 public partial class ReadmeUpdaterModule
-(
-ReadmeSettings readmeSettings,
-    ArtifactSettings artifactSettings,
-    SolutionSettings settings) : Module<ReadmeUpdaterModule.Result?>
+(ReadmeSettings readmeSettings) : Module<ReadmeUpdaterModule.Result?>
 {
+    /// <inheritdoc />
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         if (!readmeSettings.ReadmeFilePath.Exists)
@@ -72,5 +72,7 @@ ReadmeSettings readmeSettings,
     [GeneratedRegex("<!-- (.*?) -->", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled, "")]
     private static partial Regex MyRegex1();
 
+    /// <summary>The updated readme.</summary>
+    /// <param name="Readme">The readme's new content.</param>
     public record Result(string Readme);
 }

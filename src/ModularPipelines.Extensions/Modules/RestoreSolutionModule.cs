@@ -4,12 +4,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+/// <summary>Restores the solution with <c>dotnet restore</c>, writing a binary log.</summary>
+/// <param name="sharedSettings">The settings shared by every module.</param>
+/// <param name="artifactSettings">Where the binary log goes.</param>
+/// <param name="solutionSettings">The solution to restore.</param>
 public partial class RestoreSolutionModule
 (
     SharedSettings sharedSettings,
     ArtifactSettings artifactSettings,
     SolutionSettings solutionSettings = null!) : Module<RestoreSolutionModule.Result>
 {
+    /// <inheritdoc />
     protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var binlog = artifactSettings.LogsDirectory.GetFile("restore.binlog");
@@ -35,6 +40,9 @@ public partial class RestoreSolutionModule
         return new(result, binlog);
     }
 
+    /// <summary>The outcome of the restore.</summary>
+    /// <param name="CommandResult">The result of <c>dotnet restore</c>.</param>
+    /// <param name="Binlog">The binary log location.</param>
     public record Result(CommandResult CommandResult, FilePath Binlog);
 }
 

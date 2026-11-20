@@ -12,6 +12,7 @@ public partial class GenerateCodeCoverageReportsModule
 {
     private const string ReportGeneratorCommandName = "reportgenerator";
 
+    /// <inheritdoc />
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
         _ => SkipDecision.When(!HasInputReports(),
             "No cobertura coverage reports were found")

@@ -5998,3 +5998,8 @@ resharper_zero_index_from_end_highlighting = warning
 [*.g.cs]
 dotnet_diagnostic.CS0105.severity = none
 dotnet_diagnostic.CS8669.severity = none
+
+# GeneratedCode.globalconfig turns CS1591 off for the whole compilation, so it doesn't fire on the ModularPipelines generator's undocumented
+# public tool extension. Per-file settings here win over a global config, so the package's own sources still need their XML docs.
+[src/ModularPipelines.Extensions/**.cs]
+dotnet_diagnostic.CS1591.severity = warning

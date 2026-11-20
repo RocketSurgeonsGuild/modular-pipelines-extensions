@@ -16,8 +16,11 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///     Off by default: it rewrites the repository's project files on every local build, and a version that only pins a transitive
 ///     package (central transitive pinning) looks unused to it. The files keep their encoding, byte-order mark and XML declaration.
 /// </remarks>
+/// <param name="sharedSettings">Where the repository is and which files to scan.</param>
+/// <param name="configuration">The pipeline configuration.</param>
 public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSettings, IConfiguration configuration) : Module<RemoveUnusedDependenciesModule.Result>
 {
+    /// <inheritdoc />
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
         _ => !configuration.GetValue("RemoveUnusedDependencies", false)
             ? SkipDecision.Skip("Not enabled; set RemoveUnusedDependencies: true to run it")
@@ -28,6 +31,7 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
         Environment.GetEnvironmentVariable("CI") is not null ||
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") is not null;
 
+    /// <inheritdoc />
     protected override async Task<Result> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var matcher = await sharedSettings.GetMatcher(m => m
@@ -137,6 +141,9 @@ public partial class RemoveUnusedDependenciesModule(SharedSettings sharedSetting
         }
     }
 
+    /// <summary>What the module removed.</summary>
+    /// <param name="EntriesRemoved">How many entries were removed.</param>
+    /// <param name="FilesScanned">How many files were scanned.</param>
     public record Result(int EntriesRemoved, int FilesScanned);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Removing unused PackageVersion: {Package} from {File}")]

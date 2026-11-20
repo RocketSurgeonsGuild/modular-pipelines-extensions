@@ -25,12 +25,14 @@ public partial class TestSolutionModule
     SolutionSettings settings = null!,
     IModuleEstimatedTimeProvider? estimates = null) : Module<TestSolutionModule.Result?>
 {
+    /// <inheritdoc />
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(_ => SkipDecision.When(
                                                                                                     settings is null || !testSettings.IsEnabled,
                                                                                                     "Tests are disabled or no solution was provided"
                                                                                                 )
     );
 
+    /// <inheritdoc />
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         testSettings.TestArtifactsDirectory.Clean();

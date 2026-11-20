@@ -735,8 +735,7 @@ internal sealed class CanonicalModelBuilder(Compilation compilation)
             var memberName = nameWithoutParams[( lastDot + 1 )..];
 
             // Handle generic arity (e.g., List`1)
-            var backtickIdx = containingTypeName.IndexOf('`');
-            var metadataName = backtickIdx >= 0 ? containingTypeName : containingTypeName;
+            var metadataName = containingTypeName;
 
             var containingType = _compilation.GetTypeByMetadataName(metadataName);
             if (containingType is not null)

@@ -5,11 +5,18 @@ using Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
+/// <summary>How <see cref="TestSolutionModule" /> runs the tests and where it writes their results.</summary>
+/// <param name="sharedSettings">The settings shared by every module.</param>
+/// <param name="artifactSettings">Where the pipeline writes its artifacts.</param>
+/// <param name="configuration">The pipeline configuration.</param>
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class TestSettings(SharedSettings sharedSettings, ArtifactSettings artifactSettings, IConfiguration configuration)
 {
+    /// <summary>Whether the tests run. Read from <c>EnableTests</c>; on by default.</summary>
     public bool IsEnabled => configuration.GetValue<bool?>("EnableTests") ?? true;
+    /// <summary>The test results folder, created if missing. Read from <c>TestArtifactsDirectory</c>; <c>tests</c> under the logs folder by default.</summary>
     public FolderPath TestArtifactsDirectory => field ??= ( sharedSettings.GetConfigurationFolder(nameof(TestArtifactsDirectory)) ?? artifactSettings.LogsDirectory / "tests" ).EnsureExists();
+    /// <summary>The coverage folder, created if missing. Read from <c>CoverageDirectory</c>; <c>coverage</c> under the logs folder by default.</summary>
     public FolderPath CoverageDirectory => field ??= ( sharedSettings.GetConfigurationFolder(nameof(CoverageDirectory)) ?? artifactSettings.LogsDirectory / "coverage" ).EnsureExists();
     /// <summary>
     ///     The coverage settings passed to <c>dotnet test</c>: the configured file, or the library's default, which

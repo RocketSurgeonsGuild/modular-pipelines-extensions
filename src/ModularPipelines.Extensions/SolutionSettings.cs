@@ -3,10 +3,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions;
 
+/// <summary>The solution the pipeline builds, and how.</summary>
+/// <param name="sharedSettings">The settings shared by every module.</param>
+/// <param name="configuration">The pipeline configuration.</param>
 [ServiceRegistration(ServiceLifetime.Singleton)]
 public class SolutionSettings(SharedSettings sharedSettings, IConfiguration configuration)
 {
+    /// <summary>The build configuration. Read from <c>Configuration</c>; <c>Release</c> by default.</summary>
     public string Configuration => field ??= configuration.GetValue("Configuration", "Release");
+    /// <summary>The solution file. Read from <c>Solution</c>, relative to the root directory.</summary>
     public FilePath Solution => field ??= sharedSettings.GetConfigurationFile(nameof(Solution))!;
 
     /// <summary>

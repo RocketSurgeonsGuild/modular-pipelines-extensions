@@ -1,0 +1,6 @@
+is_global = true
+
+# The ModularPipelines source generator emits a public IToolsContext extension (context.Tools.Mise) without an XML doc. Generated files
+# don't get .editorconfig section severities, only global ones, so CS1591 is off here and ../../.editorconfig turns it back on for every
+# .cs file in this project.
+dotnet_diagnostic.CS1591.severity = none

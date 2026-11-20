@@ -28,6 +28,8 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 ///         <see cref="TestMode.PerProject" /> mode the test projects.
 ///     </para>
 /// </remarks>
+/// <param name="sharedSettings">The settings shared by every module.</param>
+/// <param name="settings">The solution to list.</param>
 [DependsOn<RestoreSolutionModule>]
 public partial class SolutionProjectsModule(SharedSettings sharedSettings, SolutionSettings settings = null!)
     : Module<ImmutableList<SolutionProjectsModule.Project>>
@@ -56,9 +58,11 @@ public partial class SolutionProjectsModule(SharedSettings sharedSettings, Solut
 
     // Skipped only without a solution, when the modules that read it are skipped too: a module whose required dependency was skipped is
     // skipped as well, so skipping this one in Solution mode once skipped the whole test run (and coverage) with the pipeline still green.
+    /// <inheritdoc />
     protected override void Configure(ModuleConfigurationBuilder module) =>
         module.WithSkipWhen(_ => SkipDecision.When(settings is null, "No solution was provided"));
 
+    /// <inheritdoc />
     protected override async Task<ImmutableList<Project>> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var solution = settings.Solution;

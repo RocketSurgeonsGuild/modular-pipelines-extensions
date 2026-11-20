@@ -13,6 +13,7 @@ namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 [DependsOn<GenerateCodeCoverageReportsModule>(Optional = true)]
 public class CopyCoverageBadgesModule : Module<FolderPath?>
 {
+    /// <inheritdoc />
     protected override async Task<FolderPath?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var docsModule = context.GetModuleIfRegistered<DocsModule>();

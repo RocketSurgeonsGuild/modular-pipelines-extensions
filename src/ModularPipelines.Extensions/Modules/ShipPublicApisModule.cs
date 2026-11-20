@@ -2,14 +2,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+/// <summary>
+///     On CI, for a release version, moves the entries of every <c>PublicAPI.Unshipped.txt</c> under <c>src</c> into its
+///     <c>PublicAPI.Shipped.txt</c>, sorted, and empties the unshipped file.
+/// </summary>
+/// <param name="sharedSettings">Where the repository is.</param>
 [DependsOn<GitVersionModule>]
 public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Module<ShipPublicApisModule.Result?>
 {
+    /// <inheritdoc />
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
         _ => SkipDecision.When(!ShouldShip(),
             "Not a release build — skipping public API promotion")
     );
 
+    /// <inheritdoc />
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var gitVersion = await context.GetModule<GitVersionModule>();
@@ -59,6 +66,9 @@ public partial class ShipPublicApisModule(SharedSettings sharedSettings) : Modul
         Environment.GetEnvironmentVariable("CI") is not null ||
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") is not null;
 
+    /// <summary>What the module shipped.</summary>
+    /// <param name="FilesShipped">How many unshipped files had entries to move.</param>
+    /// <param name="FilesFound">How many unshipped files were found.</param>
     public record Result(int FilesShipped, int FilesFound);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Shipped {Count} APIs from {File}")]

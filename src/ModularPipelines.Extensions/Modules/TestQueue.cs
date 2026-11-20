@@ -183,7 +183,7 @@ internal static class TestQueue
 }
 
 /// <summary>The queue the slots take their projects from: the longest from the front, the fast lane the shortest from the back.</summary>
-/// <param name="queue">The projects in <see cref="TestQueue.Order" />'s order.</param>
+/// <param name="queue">The projects in <see cref="TestQueue.Order(IEnumerable{TestTarget}, IReadOnlyDictionary{string, TimeSpan}, Func{SolutionProjectsModule.Project, int}?)" />'s order.</param>
 internal sealed class TestLanes(IReadOnlyList<TestQueueEntry> queue)
 {
     private readonly Lock _lock = new();

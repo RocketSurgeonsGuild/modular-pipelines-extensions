@@ -4,17 +4,35 @@ using ModularPipelines.Options;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Mise;
 
+/// <summary>Runs <c>mise</c> commands.</summary>
 public partial interface IMise
 {
+    /// <summary>Runs <c>mise exec</c> with the given arguments.</summary>
+    /// <param name="arguments">The arguments after <c>exec</c>.</param>
+    /// <param name="executionOptions">How to run the command.</param>
+    /// <param name="cancellationToken">Cancels the command.</param>
+    /// <returns>The command's result.</returns>
     Task<CommandResult> Execute(
         Span<string> arguments,
         CommandExecutionOptions? executionOptions = null,
         CancellationToken cancellationToken = default
     );
 
+    /// <summary>Runs the mise task <paramref name="task" /> (<c>mise run</c>) with the given arguments.</summary>
+    /// <param name="task">The task's name.</param>
+    /// <param name="arguments">The arguments passed to the task.</param>
+    /// <param name="executionOptions">How to run the command.</param>
+    /// <param name="cancellationToken">Cancels the command.</param>
+    /// <returns>The command's result.</returns>
     Task<CommandResult> Run(string task, Span<string> arguments,
         CommandExecutionOptions? executionOptions = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Runs the mise task <paramref name="task" /> (<c>mise run</c>).</summary>
+    /// <param name="task">The task's name.</param>
+    /// <param name="executionOptions">How to run the command.</param>
+    /// <param name="cancellationToken">Cancels the command.</param>
+    /// <returns>The command's result.</returns>
     Task<CommandResult> Run(string task,
         CommandExecutionOptions? executionOptions = null,
         CancellationToken cancellationToken = default);
@@ -66,6 +84,7 @@ internal class Mise(ICommandContext command) : IMise
     }
 }
 
+/// <summary>The command line options for a <c>mise</c> command.</summary>
 [ExcludeFromCodeCoverage]
 public record MiseOptions : CommandLineToolOptions { }
 

@@ -2,13 +2,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Rocket.Surgery.ModularPipelines.Extensions.Modules;
 
+/// <summary>
+///     Downloads the package icon from <see cref="SharedSettings.PackageIconUrl" /> to <see cref="SharedSettings.PackageIconFile" />, which
+///     the packages include. Skipped when the icon is already there.
+/// </summary>
+/// <param name="sharedSettings">Where the icon comes from and goes.</param>
 public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : Module<DownloadPackageIconModule.Result?>
 {
+    /// <inheritdoc />
     protected override void Configure(ModuleConfigurationBuilder module) => module.WithSkipWhen(
         _ => SkipDecision.When(sharedSettings.PackageIconFile.Exists,
             "Package icon already staged")
     );
 
+    /// <inheritdoc />
     protected override async Task<Result?> ExecuteAsync(IModuleContext context, CancellationToken cancellationToken)
     {
         var url = sharedSettings.PackageIconUrl;
@@ -39,5 +46,7 @@ public partial class DownloadPackageIconModule(SharedSettings sharedSettings) : 
     [LoggerMessage(LogLevel.Information, Message = "Package icon staged at {Path}")]
     private static partial void LogPackageIconStaged(ILogger logger, string path);
 
+    /// <summary>The downloaded icon.</summary>
+    /// <param name="Path">Where the icon was saved.</param>
     public record Result(string Path);
 }

@@ -39,6 +39,11 @@
       "matchCategories": ["js"],
       "automerge": true,
       "labels": [":truck: private-dependencies"]
+    },
+    {
+      "description": "Shipped: the src packages build on these. The org preset marks them private; this repository ships them",
+      "matchDepNames": ["ModularPipelines", "ModularPipelines.*", "Joinery.Dovetail.ModularPipelines", "Specular", "Microsoft.VisualStudio.SolutionPersistence", "Microsoft.CodeAnalysis.CSharp.Workspaces"],
+      "labels": [":package: dependencies"]
     }
   ]
 }
